@@ -136,3 +136,67 @@ The book is **not ready to drill as-is**, but the fixes are small and local.
    reading. Suggested neutral wording for the sheet: *"Written ending ־תי: the usual 1cs ending, and also an older
    spelling of the 2fs ending (GKC §44h). Read ending ־תְּ: 2fs."*
 5. **Names are sound** apart from Ephrathite.
+
+## Confirmation pass
+
+Read-only check of commit 9f3fa4d on 2026-10-22. Inputs: `pipeline/overrides/ruth.json`, the rebuilt `data/ruth.js`
+(checked by script) and the regenerated `docs/review/ruth-lexemes.md`. Sefaria's API still answered scripts, so I used
+it again.
+
+**(1) Did each MUST/SHOULD finding land as intended?**
+
+- **Pipeline (F1):** fixed. בּוֹא, בַּיִן and בָּחוּר are now drilled with BDB pages 97, 107 and 104. Vocabulary is
+  286: 285 + 3 − 2 merges (VERIFIED).
+- **Count (F2):** Bethlehem n = 7 (VERIFIED).
+- **Glosses:** every gloss override is present in the data. G1–G29 and G31–G34 read as I proposed, or better
+  (VERIFIED).
+- **Short definitions (F3):** the misleading ones are blanked, and נָא now reads "I pray". Two remain (MINOR):
+  - בַּיִן shows "interval", a root heading of the same kind, and it came in with F1.
+  - שַׁדַּי still shows "sufficient". That is one etymology, and it sits under a gloss changed to "Shaddai" precisely
+    because the meaning is debated. I suggest blanking it.
+- **Shared glosses (F5):** 17 English glosses are still shared, all by true synonyms or near-synonyms. "if"
+  (אִם / כִּי אם־) is the deliberate G30 gap, and H3588b/H518b still carry identical headwords.
+- **Ketiv/qere (K1):** the note is present and displayed (`js/app.js` lines 503 and 542). The ketiv parse still reads
+  "1cs" and the diff tag still says "person, gender". With the note next to them this is acceptable (MINOR).
+- **K2:** fixed. The 3:14 place is tagged "spelling" and both tokens sit under H2962.
+- **K5:** fixed through `_token_glosses`.
+- **Not applied, and not on your not-applied list:** F4. Parses still show "bs", "bd" and "bp" (13 rows in the packet).
+  It is MINOR.
+
+**(2) Are the override sources accurate?**
+
+- **Pages:** every "BDB p. N" in the overrides matches the BDB page recorded in the data for that lexeme, or for the
+  merge target (VERIFIED by script).
+- **Ruth references confirmed against BDB (Sefaria):**
+  - קָלִי, Ru 2:14
+  - רֵיקָם, Ru 1:21 and 3:17 ("with empty hands")
+  - שֵׂיבָה, Ru 4:15 ("old age")
+  - שָׁכֵן, Ru 4:17 ("neighbour: woman … pl.")
+  - דֶּרֶךְ, "way, road", Ru 1:7
+  - נַעֲרָה: BDB says "gleaner(s) Ru 2:5, 8, 22, 23; 3:2". "Servant girl" is fair, though BDB's own word is "gleaner".
+- **Senses confirmed in BDB's sense outline on Sefaria, without a Ruth citation:**
+  - אִישׁ: husband, servant
+  - נַעַר: servant, retainer
+  - זָקֵן: "elder (of those having authority)"
+  - כְּלִי: vessel
+  - מְאֹד: very
+  - נָא: "I (we) pray"
+  - בָּחוּר: young man
+- **UNVERIFIED:** `_token_glosses` cites "BDB p. 395" for the 2:1 ketiv. The verb entry יָדַע starts on p. 393 and מוֹדַע
+  is on p. 396, so 395 is plausible, but Sefaria gives no page numbers.
+
+**(3) Is the 3:3/3:4 note neutral?** Yes. It gives both readings of the written ending, cites GKC §44h, does not call
+either reading an error or the other a correction, and does not translate the verse.
+
+**(4) Did the fixes break anything?**
+
+- **Merges:** no H3212 or H2958 segment or `lex` field is left in the data. H1980 has n = 18 (15 + 3). H2962 holds both
+  3:14 tokens (ketiv and qere) with n = 1, which counts the place once and is correct.
+- **Suffix glosses:** there are 12 infinitive or participle + suffix tokens. Each shows a dual gloss ("his / him",
+  "your / you"). That is neutral, because the suffix may be the subject (בְשָׁכְבוֹ 3:4, כַּלֹּתוֹ 3:3) or the object
+  (לְעָזְבֵךְ 1:16, לְהַכִּירֵנִי 2:10). One cosmetic wart: 2:7 שִׁבְתָּהּ shows "her / her" (MINOR).
+- **K3:** recorded only in `docs/agents/LEDGER.md`. The learner still sees מַרְגְּלוֹתָיוֹ with no note. That matches
+  your decision.
+
+**Verdict:** all five MUST-FIX and all SHOULD-FIX items are resolved except the deliberate G30. What remains is MINOR:
+the בַּיִן and שַׁדַּי definitions, the F4 gender codes, "her / her", and the unverified p. 395.

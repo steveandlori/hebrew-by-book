@@ -70,12 +70,13 @@
   "H834a": {"def": "", "why": "the short definition 'who' is one use, not the meaning", "source": "BDB p. 81"},
   "H3588b": {"gloss": "(כִּי אִם) except, but", "why": "the two words form one phrase; TBESH's 'that if: except' was cut to 'that if'", "source": "BDB p. 474 (closely conjoined כִּי אִם 'except'), confirmed by content review A"},
   "H518b": {"gloss": "(כִּי אִם) except, but", "why": "second half of the phrase כִּי אִם", "source": "BDB p. 474, confirmed by content review A"},
+  "H996": {"def": "", "why": "the short definition 'interval' is the root heading, not the meaning of the preposition", "source": "BDB p. 107"},
   "H834c": {"gloss": "from what", "def": "", "why": "Ruth 2:9 'from what the young men draw'", "source": "BDB p. 84"},
 
   "H673": {"gloss": "Ephrathite", "why": "Ruth 1:2 אֶפְרָתִים מִבֵּית לֶחֶם; 'Ephraimite' names the wrong tribe", "source": "BDB p. 68, Ru 1:2"},
   "H672": {"kind": "place", "def": "", "why": "Ephrathah is Bethlehem in Ruth 4:11; the short definition shown was a run-on note", "source": "BDB p. 68, Ru 4:11"},
   "H8009": {"gloss": "Salmah", "def": "", "why": "spelled שַׂלְמָה in 4:20 and שַׂלְמוֹן in 4:21; the same English name hid that", "source": "BDB p. 969"},
-  "H7706": {"gloss": "Shaddai", "kind": "divine name", "why": "the meaning of the name is debated; 'Almighty' is the traditional rendering", "source": "BDB p. 994, Ru 1:20, 21"},
+  "H7706": {"gloss": "Shaddai", "kind": "divine name", "def": "", "why": "the meaning of the name is debated; 'Almighty' is the traditional rendering", "source": "BDB p. 994, Ru 1:20, 21"},
   "H3068": {"kind": "divine name", "why": "TBESH's 'title' class covers months and gods; this is the divine name", "source": "TBESH morph N:N--T"},
   "H3063": {"kind": "place, person", "why": "the land of Judah in 1:1, 2, 7; the man Judah in 4:12", "source": "Ruth 1:1, 4:12"},
   "H3478": {"kind": "people", "why": "Israel in Ruth is the people (2:12, 4:7, 11, 14)", "source": "Ruth 2:12, 4:7"},
@@ -85,6 +86,6 @@
     "3.4:H7901": "Written ending ־תי: the usual first person singular ending, and also an older spelling of the second feminine singular ending (GKC §44h). Read ending ־תְּ: second feminine singular."
   },
   "_token_glosses": {
-    "08ygU": {"gloss": "acquaintance, known one", "why": "the written form is a participle of יָדַע used as a noun", "source": "BDB p. 395 (Pual ptc. as subst., Ru 2:1 Kt)"}
+    "08ygU": {"gloss": "acquaintance, known one", "why": "the written form is a participle of יָדַע used as a noun", "source": "BDB s.v. יָדַע (entry begins p. 393): Pual participle as substantive, acquaintance, Ru 2:1 Kt"}
   }
 }
