@@ -1,0 +1,156 @@
+<!doctype html>
+<!--
+  Hebrew by Book — progress board (Steve's one-stop status surface).
+  Status updates edit ONLY the data block between the DATA START / DATA END markers.
+  Validate after every edit:  node test/board.check.mjs
+  Tabs: Roadmap · Your queue (only-Steve actions) · Try this · Docs.
+  Try-this ticks and notes live in this browser's localStorage, never in this file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Hebrew by Book board</title>
+<style>
+:root { --paper:#F4F1EA; --card:#fff; --ink:#2A2118; --ink2:#5E5348; --ink3:#8C8176; --line:#E0D9CE; --pen:#8A3F12; --pen-soft:#F6E7DC; --good:#1D7A4E; --good-soft:#DFF2E7; --warn:#9A6700; --warn-soft:#FFF2CC; --bad:#C2372B; --bad-soft:#FBE3DF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper:#17130F; --card:#221C16; --ink:#F2ECE4; --ink2:#C7BCAE; --ink3:#8F8578; --line:#3A3128; --pen:#F0A574; --pen-soft:#3B2618; --good:#5FD39A; --good-soft:#163726; --warn:#F4C861; --warn-soft:#3E3011; --bad:#FF8A7A; --bad-soft:#442020; } }
+:root[data-theme="dark"] { --paper:#17130F; --card:#221C16; --ink:#F2ECE4; --ink2:#C7BCAE; --ink3:#8F8578; --line:#3A3128; --pen:#F0A574; --pen-soft:#3B2618; --good:#5FD39A; --good-soft:#163726; --warn:#F4C861; --warn-soft:#3E3011; --bad:#FF8A7A; --bad-soft:#442020; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding:16px 16px 0; max-width:760px; margin:0 auto; }
+h1 { font-size:22px; margin:0; } .asof { color:var(--ink3); font-size:13px; margin-top:4px; }
+nav { display:flex; gap:4px; margin-top:12px; border-bottom:1px solid var(--line); overflow-x:auto; }
+nav button { background:none; border:0; border-bottom:3px solid transparent; padding:8px 10px; font:inherit; color:var(--ink2); cursor:pointer; white-space:nowrap; }
+nav button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--pen); font-weight:700; }
+nav .n { display:inline-block; min-width:1.4em; padding:0 5px; margin-left:4px; border-radius:999px; background:var(--pen-soft); color:var(--pen); font-size:12px; }
+main { max-width:760px; margin:0 auto; padding:16px; }
+.card { background:var(--card); border-radius:14px; padding:14px 16px; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.06); margin-bottom:12px; }
+.card h2 { font-size:17px; margin:0 0 6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.chip { font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--line); color:var(--ink2); }
+.chip.done { background:var(--good-soft); color:var(--good); } .chip.active { background:var(--pen-soft); color:var(--pen); } .chip.next { background:var(--warn-soft); color:var(--warn); }
+.chip.now { background:var(--bad-soft); color:var(--bad); } .chip.soon { background:var(--warn-soft); color:var(--warn); } .chip.later { background:var(--line); color:var(--ink2); }
+ul.tasks { list-style:none; padding:0; margin:8px 0 0; display:grid; gap:4px; }
+ul.tasks li { display:grid; grid-template-columns:1.4em 1fr; gap:6px; font-size:15px; }
+.st-done::before { content:"✓"; color:var(--good); } .st-doing::before { content:"◐"; color:var(--pen); } .st-todo::before { content:"○"; color:var(--ink3); }
+.p { color:var(--ink2); font-size:15px; margin:4px 0 0; }
+.muted { color:var(--ink3); font-size:13px; }
+.struck h2, .struck .p { text-decoration:line-through; opacity:.6; }
+.try textarea { width:100%; min-height:3em; font:inherit; border:1px solid var(--line); border-radius:8px; padding:6px 8px; background:var(--paper); color:var(--ink); margin-top:8px; }
+.try label { display:flex; gap:8px; align-items:center; margin-top:8px; font-size:14px; }
+.btn { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 14px; background:var(--pen); color:#fff; cursor:pointer; }
+a { color:var(--pen); }
+.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-bottom:12px; }
+.stat { background:var(--card); border-radius:10px; padding:8px 12px; } .stat b { display:block; font-size:22px; } .stat span { font-size:12px; color:var(--ink2); }
+</style>
+</head>
+<body>
+<header><h1>Hebrew by Book · board</h1><div class="asof" id="asof"></div>
+<nav role="tablist" id="tabs"></nav></header>
+<main id="main"></main>
+<script>
+/* ==== DATA START ==== */
+const BOARD = {
+  meta: {
+    asOf: '2026-10-22 (afternoon)',
+    headline: 'First slice of Ruth built, tested, and in independent review before it goes live.',
+    stats: [
+      { label: 'Ruth words taught', value: '285' },
+      { label: 'names (own tab)', value: '30' },
+      { label: 'written/read places', value: '13' },
+      { label: 'tests passing', value: '81' },
+      { label: 'links live', value: '90/90' },
+    ],
+    links: [
+      { label: 'Live site (after first push)', href: 'https://steveandlori.github.io/hebrew-by-book/' },
+      { label: 'STATUS.md (narrative)', href: 'STATUS.md' },
+    ],
+  },
+  roadmap: [
+    { id: 'm1', title: 'First slice: Ruth, end to end', status: 'active',
+      summary: 'Data pipeline from pinned sources (OSHB text and parsing, TBESH glosses, BDB citations) with ketiv and qere both kept; the guided Today loop adapted from josie-stats; Read, Written and read, Words, Names, Progress, Settings. Independent content and code review running; QA and publishing to follow.',
+      tasks: [
+        { t: 'Pipeline: pinned, checksummed sources; both readings first-class; fails loudly on gaps', s: 'done' },
+        { t: 'Morphology decoded from OSHB’s published code tables (fixes lomed’s participle and stem bugs)', s: 'done' },
+        { t: 'Deck: word, word-in-verse, other forms, Which word? (look-alike dictionary words)', s: 'done' },
+        { t: 'App views and Hebrew typography (vendored Noto Serif Hebrew, pointed/unpointed)', s: 'done' },
+        { t: 'Unit tests (Python 32, JS 49) and link check (90/90)', s: 'done' },
+        { t: 'Content review A (cited sources) and B (independent sources, other model)', s: 'doing' },
+        { t: 'Fresh code review', s: 'doing' },
+        { t: 'Fix confirmed findings', s: 'todo' },
+        { t: 'QA agent with written test plan, multi-day simulation', s: 'todo' },
+        { t: 'Publish: public GitHub repo + Pages', s: 'todo' },
+      ] },
+    { id: 'm2', title: 'Deepen Ruth', status: 'next',
+      summary: 'Ideas banked, in rough priority: verb parsing drills (Steve: wanted, not top priority); ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works (vocabulary spacing, words in context) with DOI checks.',
+      tasks: [] },
+    { id: 'm3', title: 'More books', status: 'later',
+      summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
+      tasks: [] },
+  ],
+  actions: [
+    { id: 'a1', title: 'Nothing needed from you right now', urgency: 'later', unblocks: 'n/a',
+      advice: 'You gave permission to publish to a public GitHub repo with Pages, so that will happen without you once review and QA pass.', done: false },
+  ],
+  tryThis: [
+    { id: 't1', date: '2026-10-22', title: 'Try a Today session (once the site is live)',
+      steps: 'Open the live site on your phone. The first visit shows How it works; then Today offers 10 new words as 20 cards. Try a hint, the writing pad, and the three grading buttons.' },
+    { id: 't2', date: '2026-10-22', title: 'Read Ruth 3:3–4 and tap the bracketed forms',
+      steps: 'Read tab → chapter 3. Each written/read place shows the read form with ק and the written consonants in brackets marked כ. Tap one: both readings appear with their own parse. Then switch Settings → Unpointed and look again: the written consonants lead.' },
+    { id: 't3', date: '2026-10-22', title: 'Written and read page',
+      steps: 'Read → "Written and read: 13 places". Each place hides both parses until you open it. Tell me if any wording takes a side.' },
+  ],
+  docs: [
+    { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
+    { title: 'Design as built', href: 'docs/agents/DESIGN.md', blurb: 'What the first slice does and where each piece of data comes from.', date: '2026-10-22' },
+    { title: 'Review packet: every Ruth word', href: 'docs/review/ruth-lexemes.md', blurb: 'All 285 words, 30 names and 13 written/read places with gloss, BDB citation and first occurrence. Generated from the built data.', date: '2026-10-22' },
+    { title: 'Notes on lomed', href: 'reference/lomed/README.md', blurb: 'What was taken from the earlier lomed project (resources only) and the bugs found in its parser.', date: '2026-10-22' },
+    { title: 'Learning strategy handoff', href: 'LEARNING-STRATEGY-START-HERE.md', blurb: 'The starting brief from the josie-stats session. Historical: some of its assumptions were revised (see STATUS).', date: '2026-10-22' },
+  ],
+};
+/* ==== DATA END ==== */
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const KEY = 'hbb-board-v1';
+let notes = {}; try { notes = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { notes = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(notes)); } catch (e) { /* ignore */ } };
+const TABS = [
+  ['roadmap', 'Roadmap', () => BOARD.roadmap.length],
+  ['actions', 'Your queue', () => BOARD.actions.filter(a => !a.done && a.title !== 'Nothing needed from you right now').length],
+  ['try', 'Try this', () => BOARD.tryThis.length],
+  ['docs', 'Docs', () => BOARD.docs.length],
+];
+let tab = 'roadmap'; try { tab = localStorage.getItem(KEY + ':tab') || 'roadmap'; } catch (e) { /* ignore */ }
+function render() {
+  document.getElementById('asof').textContent = `As of ${BOARD.meta.asOf}. ${BOARD.meta.headline}`;
+  document.getElementById('tabs').innerHTML = TABS.map(([k, n, c]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}">${n}<span class="n">${c()}</span></button>`).join('');
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; try { localStorage.setItem(KEY + ':tab', tab); } catch (e) { /* ignore */ } render(); });
+  const m = document.getElementById('main');
+  if (tab === 'roadmap') {
+    m.innerHTML = `<div class="stats">${BOARD.meta.stats.map(s => `<div class="stat"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('')}</div>`
+      + `<p class="muted">${BOARD.meta.links.map(l => `<a href="${esc(l.href)}">${esc(l.label)}</a>`).join(' · ')}</p>`
+      + BOARD.roadmap.map(r => `<div class="card"><h2>${esc(r.title)} <span class="chip ${r.status}">${esc(r.status)}</span></h2><p class="p">${esc(r.summary)}</p>
+        ${r.tasks.length ? `<ul class="tasks">${r.tasks.map(t => `<li class="st-${t.s}"><span>${esc(t.t)}</span></li>`).join('')}</ul>` : ''}</div>`).join('');
+  } else if (tab === 'actions') {
+    m.innerHTML = BOARD.actions.map(a => `<div class="card${a.done ? ' struck' : ''}"><h2>${esc(a.title)} <span class="chip ${a.urgency}">${esc(a.urgency)}</span></h2>
+      <p class="p"><b>Unblocks:</b> ${esc(a.unblocks)}</p><p class="p">${esc(a.advice)}</p></div>`).join('');
+  } else if (tab === 'try') {
+    m.innerHTML = BOARD.tryThis.map(t => { const n = notes[t.id] || {}; return `<div class="card try"><h2>${esc(t.title)} <span class="muted">${esc(t.date)}</span></h2><p class="p">${esc(t.steps)}</p>
+      <label><input type="checkbox" data-done="${t.id}" ${n.done ? 'checked' : ''}> Tried it</label>
+      <textarea data-note="${t.id}" placeholder="Notes for Claude">${esc(n.note || '')}</textarea></div>`; }).join('')
+      + `<button class="btn" id="copy">Copy my feedback</button> <span class="muted" id="copied"></span>`;
+    m.querySelectorAll('[data-done]').forEach(c => c.onchange = () => { (notes[c.dataset.done] = notes[c.dataset.done] || {}).done = c.checked; save(); });
+    m.querySelectorAll('[data-note]').forEach(x => x.oninput = () => { (notes[x.dataset.note] = notes[x.dataset.note] || {}).note = x.value; save(); });
+    document.getElementById('copy').onclick = async () => {
+      const text = BOARD.tryThis.map(t => { const n = notes[t.id] || {}; return `- ${t.title}: ${n.done ? 'tried' : 'not tried'}${n.note ? `. ${n.note}` : ''}`; }).join('\n');
+      try { await navigator.clipboard.writeText(`Hebrew by Book feedback (${new Date().toISOString().slice(0, 10)}):\n${text}`); document.getElementById('copied').textContent = 'Copied.'; }
+      catch (e) { document.getElementById('copied').textContent = 'Copy failed; select the notes by hand.'; }
+    };
+  } else {
+    m.innerHTML = BOARD.docs.map(d => `<div class="card"><h2><a href="${esc(d.href)}">${esc(d.title)}</a> <span class="muted">${esc(d.date)}</span></h2><p class="p">${esc(d.blurb)}</p></div>`).join('');
+  }
+}
+render();
+</script>
+</body>
+</html>
