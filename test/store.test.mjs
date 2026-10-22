@@ -2,26 +2,32 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { importState, exportState, DEFAULT_SETTINGS } from '../js/store.js';
 
-test('defaults include introSeen=false and showPad=true', () => {
-  assert.equal(DEFAULT_SETTINGS.introSeen, false); assert.equal(DEFAULT_SETTINGS.showPad, true);
-});
-test('a pre-release export imports with snapshots and new settings defaulted', () => {
-  const old = JSON.stringify({ app: 'josie-stats', version: 1, settings: { newPerDay: 15 }, cards: {}, log: [], newIntroduced: {}, sessions: {} });
-  const s = importState(old);
-  assert.deepEqual(s.snapshots, {});
-  assert.equal(s.settings.newPerDay, 15); assert.equal(s.settings.introSeen, false); assert.equal(s.settings.showPad, true);
-});
-test('export round-trips snapshots', () => {
-  const s = importState(JSON.stringify({ app: 'josie-stats', snapshots: { '2026-10-20': { stages: { new: 1 }, avgInterval: 3 } } }));
-  assert.deepEqual(JSON.parse(exportState(s)).snapshots, s.snapshots);
-});
-
-test('grade buttons default to three', () => {
+test('defaults: 10 new words a day, pointed text, pad shown, intro not yet seen', () => {
+  assert.equal(DEFAULT_SETTINGS.newPerDay, 10);
+  assert.equal(DEFAULT_SETTINGS.pointing, 'pointed');
+  assert.equal(DEFAULT_SETTINGS.showPad, true);
+  assert.equal(DEFAULT_SETTINGS.introSeen, false);
   assert.equal(DEFAULT_SETTINGS.gradeButtons, 3);
 });
-test('an export with the old fourButtons flag imports as four grade buttons', () => {
-  const s = importState(JSON.stringify({ app: 'josie-stats', settings: { fourButtons: true } }));
-  assert.equal(s.settings.gradeButtons, 4);
-  const t = importState(JSON.stringify({ app: 'josie-stats', settings: { fourButtons: false } }));
-  assert.equal(t.settings.gradeButtons, 3);
+test('import fills missing fields with defaults', () => {
+  const s = importState(JSON.stringify({ app: 'hebrew-by-book', settings: { newPerDay: 5 } }));
+  assert.equal(s.settings.newPerDay, 5);
+  assert.equal(s.settings.pointing, 'pointed');
+  assert.deepEqual(s.snapshots, {});
+});
+test('import rejects bad setting values', () => {
+  const s = importState(JSON.stringify({ app: 'hebrew-by-book', settings: { pointing: 'cantillated', gradeButtons: 7, hebSize: 'xl', newPerDay: 0 } }));
+  assert.equal(s.settings.pointing, 'pointed');
+  assert.equal(s.settings.gradeButtons, 3);
+  assert.equal(s.settings.hebSize, 'm');
+  assert.equal(s.settings.newPerDay, 10);
+});
+test('import refuses a file from another app', () => {
+  assert.throws(() => importState(JSON.stringify({ app: 'josie-stats' })), /not a Hebrew by Book/);
+});
+test('export round-trips cards and snapshots', () => {
+  const s = importState(JSON.stringify({ app: 'hebrew-by-book', cards: { 'H559:recall': { state: 2 } }, snapshots: { '2026-10-22': { avgInterval: 3 } } }));
+  const back = JSON.parse(exportState(s));
+  assert.deepEqual(back.cards, s.cards);
+  assert.deepEqual(back.snapshots, s.snapshots);
 });

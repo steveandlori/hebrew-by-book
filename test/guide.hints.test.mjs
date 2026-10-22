@@ -3,31 +3,30 @@ import assert from 'node:assert/strict';
 import { hintLadder, autoRating, nudgeFor, NUDGES, buildSnapshot, pruneSnapshots, revealLine } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
-const formula = { id: 'mean', name: 'Mean', meaning: 'Balance point.', when: 'Use for averages.', symbols: [['\mu', 'population mean'], ['N', 'size']], cloze: '\bar{x} = \frac{\blank{\sum x}}{n}' };
-const card = kind => ({ id: `mean:${kind}`, kind, formula });
+const item = { id: 'H559', he: 'אָמַר', gloss: 'to say', pos: 'V', tr: 'ʾāmar' };
+const card = (kind, extra = {}) => ({ id: `H559:${kind}`, kind, item, ...extra });
 
-test('recall ladder is meaning, symbol names, cloze skeleton', () => {
-  assert.deepEqual(hintLadder(card('recall')).map(h => h.type), ['meaning', 'symbols', 'cloze']);
-  assert.deepEqual(hintLadder(card('recall'))[1].symbols, ['\mu', 'N']);
-  assert.equal(hintLadder(card('recall'))[2].latex, formula.cloze);
+test('recall ladder is part of speech, a verse, then the first letter', () => {
+  const l = hintLadder(card('recall', { hintToken: 't1' }));
+  assert.deepEqual(l.map(h => h.type), ['pos', 'verse', 'initial']);
+  assert.equal(l[1].token, 't1');
+  assert.equal(l[2].text, 'to s…');
 });
-test('cloze ladder is meaning then symbols with meanings', () => {
-  const l = hintLadder(card('cloze'));
-  assert.deepEqual(l.map(h => h.type), ['meaning', 'symbolsFull']);
-  assert.deepEqual(l[1].symbols, formula.symbols);
+test('recall ladder without a hint verse skips it', () => {
+  assert.deepEqual(hintLadder(card('recall')).map(h => h.type), ['pos', 'initial']);
 });
-test('use ladder is name then when', () => {
-  assert.deepEqual(hintLadder(card('use')).map(h => h.text), ['Mean', 'Use for averages.']);
+test('in-verse and form ladders are dictionary form then parse', () => {
+  for (const k of ['ctx', 'form']) {
+    const l = hintLadder(card(k, { token: 't9' }));
+    assert.deepEqual(l.map(h => h.type), ['lemma', 'parse']);
+    assert.equal(l[1].token, 't9');
+  }
 });
-test('symbols ladder is name then meaning; why ladder is meaning then when', () => {
-  assert.deepEqual(hintLadder(card('symbols')).map(h => h.type), ['name', 'meaning']);
-  assert.deepEqual(hintLadder(card('why')).map(h => h.type), ['meaning', 'when']);
+test('the initial hint handles glosses without "to"', () => {
+  const l = hintLadder({ id: 'x:recall', kind: 'recall', item: { ...item, gloss: '[Obj.]' } });
+  assert.equal(l.at(-1).text, 'O…');
 });
-test('a formula without symbols drops the symbols hint', () => {
-  const c = { id: 'x:recall', kind: 'recall', formula: { ...formula, symbols: undefined } };
-  assert.deepEqual(hintLadder(c).map(h => h.type), ['meaning', 'cloze']);
-});
-test('scenario cards have no ladder', () => { assert.deepEqual(hintLadder(card('scenario')), []); });
+test('Which word? cards have no ladder', () => { assert.deepEqual(hintLadder(card('which')), []); });
 test('automatic rating: none, Hard, Again', () => {
   assert.equal(autoRating(0), null); assert.equal(autoRating(1), 2); assert.equal(autoRating(2), 1); assert.equal(autoRating(3), 1);
 });

@@ -1,8 +1,8 @@
-// Pure session logic for the guided loop: formula stages, session composition,
-// hint ladder, nudges, automatic rating, snapshots. No DOM. Unit-tested in test/.
+// Pure session logic for the guided loop: word stages, session composition, hint ladder, nudges,
+// automatic rating, snapshots. No DOM. Unit-tested in test/. Adapted from josie-stats (formulas → words).
 import { State } from './scheduler.js';
 
-/* ───────────────────────── formula stages ───────────────────────── */
+/* ───────────────────────── word stages ───────────────────────── */
 
 export const STAGES = ['new', 'learning', 'graduated', 'solid'];
 export const STAGE_LABEL = { new: 'New', learning: 'Learning', graduated: 'Graduated', solid: 'Solid' };
@@ -10,29 +10,31 @@ const SOLID_STABILITY_DAYS = 7;
 
 const inReview = c => !!c && c.state === State.Review;
 
-// A formula's stage is read off its cards' FSRS states; nothing extra is stored.
-export function formulaStage(fcards, getCard) {
-  const recallCard = fcards.find(c => c.kind === 'recall');
+// A word's stage is read off its cards' FSRS states; nothing extra is stored.
+// New: recall card never seen. Learning: recall in learning steps. Graduated: recall in review.
+// Solid: recall stable for a week or more, and its in-verse and Which word? cards (if any) in review too.
+export function itemStage(icards, getCard) {
+  const recallCard = icards.find(c => c.kind === 'recall');
   const recall = recallCard ? getCard(recallCard.id) : null;
   if (!recall) return 'new';
   if (!inReview(recall)) return 'learning';
-  const cloze = fcards.find(c => c.kind === 'cloze');
-  const scen = fcards.find(c => c.kind === 'scenario');
-  const clozeOk = !cloze || inReview(getCard(cloze.id));
-  const scenOk = !scen || inReview(getCard(scen.id));
-  if (clozeOk && scenOk && recall.stability >= SOLID_STABILITY_DAYS) return 'solid';
+  const ctx = icards.find(c => c.kind === 'ctx');
+  const which = icards.find(c => c.kind === 'which');
+  const ctxOk = !ctx || inReview(getCard(ctx.id));
+  const whichOk = !which || inReview(getCard(which.id));
+  if (ctxOk && whichOk && recall.stability >= SOLID_STABILITY_DAYS) return 'solid';
   return 'graduated';
 }
 
-export function stagesByFormula(deck, getCard) {
-  const byF = new Map();
+export function stagesByItem(deck, getCard) {
+  const by = new Map();
   for (const c of deck) {
-    const k = c.formula.id;
-    if (!byF.has(k)) byF.set(k, []);
-    byF.get(k).push(c);
+    const k = c.item.id;
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(c);
   }
   const out = new Map();
-  for (const [id, fcards] of byF) out.set(id, formulaStage(fcards, getCard));
+  for (const [id, icards] of by) out.set(id, itemStage(icards, getCard));
   return out;
 }
 
@@ -42,7 +44,7 @@ export function countStages(map) {
   return n;
 }
 
-// Formulas that advanced between two stage maps, grouped by the stage they reached.
+// Words that advanced between two stage maps, grouped by the stage they reached.
 export function stageDiff(before, after) {
   const rank = Object.fromEntries(STAGES.map((s, i) => [s, i]));
   const out = { met: [], graduated: [], solid: [] };
@@ -59,58 +61,50 @@ export function stageDiff(before, after) {
 /* ───────────────────────── session composer ───────────────────────── */
 
 export const PHASE_LABEL = { recall: 'Recall', meet: 'Meet', deepen: 'Deepen', tell: 'Tell apart' };
-const DEEPEN_KINDS = new Set(['use', 'symbols', 'why']);
+const DEEPEN_KINDS = new Set(['form']);
 
 function shuffleWith(arr, rng) {
   const out = arr.slice();
   for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
   return out;
 }
+function interleave(a, b) {
+  const out = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) { if (i < a.length) out.push(a[i]); if (i < b.length) out.push(b[i]); }
+  return out;
+}
 
-// Builds today's guided queue in phases: recall (due), meet (new formulas as recall+cloze pairs),
-// deepen (use/symbols/why for graduated formulas) and tell apart (scenario cards).
-// `budget` is the number of never-seen cards allowed today.
-export function composeSession({ deck, getCard, isDue, budget, rng = Math.random }) {
-  const stages = stagesByFormula(deck, getCard);
+// Builds today's guided queue in phases: recall (due), meet (new words as recall + in-verse pairs),
+// deepen (other forms of graduated words) and tell apart (Which word? cards for graduated words).
+// `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today.
+export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, rng = Math.random }) {
+  const stages = stagesByItem(deck, getCard);
   const isNew = id => !getCard(id);
-  const settled = fid => stages.get(fid) === 'graduated' || stages.get(fid) === 'solid';
+  const settled = iid => stages.get(iid) === 'graduated' || stages.get(iid) === 'solid';
 
-  const recallDue = deck.filter(c => c.kind !== 'scenario' && !isNew(c.id) && isDue(c.id));
+  const recallDue = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && isDue(c.id));
   // Cards still in learning steps come due within minutes; they belong to this session even if not due yet.
   const inSteps = c => { const s = getCard(c.id); return s && (s.state === State.Learning || s.state === State.Relearning); };
-  const recallSoon = deck.filter(c => c.kind !== 'scenario' && !isNew(c.id) && !isDue(c.id) && inSteps(c))
+  const recallSoon = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && !isDue(c.id) && inSteps(c))
     .sort((a, b) => new Date(getCard(a.id).due) - new Date(getCard(b.id).due));
   const recall = [...recallDue, ...recallSoon];
-  const dueTell = deck.filter(c => c.kind === 'scenario' && !isNew(c.id) && isDue(c.id));
-  const tellNew = deck.filter(c => c.kind === 'scenario' && isNew(c.id) && settled(c.formula.id));
-  const deepenNew = deck.filter(c => DEEPEN_KINDS.has(c.kind) && isNew(c.id) && settled(c.formula.id));
-  // Cloze cards whose recall card has been met but which were left behind (odd budget) finish the meet first.
-  const meetFinish = deck.filter(c => c.kind === 'cloze' && isNew(c.id) && stages.get(c.formula.id) !== 'new');
+  const dueTell = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
+  const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
+  const deepenNew = deck.filter(c => DEEPEN_KINDS.has(c.kind) && isNew(c.id) && settled(c.item.id));
+  // In-verse cards whose recall card was met but which were left behind finish the meet first (no new word used).
+  const meetFinish = deck.filter(c => c.kind === 'ctx' && isNew(c.id) && stages.get(c.item.id) !== 'new');
   const meetPairs = [];
   for (const c of deck) {
-    if (c.kind !== 'recall' || stages.get(c.formula.id) !== 'new') continue;
-    const cloze = deck.find(x => x.kind === 'cloze' && x.formula.id === c.formula.id && isNew(x.id));
-    meetPairs.push(cloze ? [c, cloze] : [c]);
+    if (c.kind !== 'recall' || stages.get(c.item.id) !== 'new') continue;
+    const ctx = deck.find(x => x.kind === 'ctx' && x.item.id === c.item.id && isNew(x.id));
+    meetPairs.push(ctx ? [c, ctx] : [c]);
   }
 
-  // Allocation: discrimination/deepening for graduated formulas gets up to half the budget first,
-  // new formulas fill the rest, and anything left goes back to the first pool.
-  let left = Math.max(0, budget);
-  const finish = meetFinish.slice(0, left);
-  left -= finish.length;
-  const firstPool = [...tellNew, ...deepenNew];
-  const firstTake = firstPool.slice(0, Math.min(Math.ceil(left / 2), firstPool.length));
-  left -= firstTake.length;
-  const meet = [...finish];
-  for (const pair of meetPairs) {
-    if (left <= 0) break;
-    const take = pair.slice(0, left);
-    meet.push(...take); left -= take.length;
-  }
-  const rest = firstPool.slice(firstTake.length, firstTake.length + left);
-  const extra = [...firstTake, ...rest];
-  const tell = [...dueTell, ...extra.filter(c => c.kind === 'scenario')];
-  const deepen = extra.filter(c => c.kind !== 'scenario');
+  const meet = [...meetFinish];
+  for (const pair of meetPairs.slice(0, Math.max(0, newWords))) meet.push(...pair);
+  const extraTake = interleave(tellNew, deepenNew).slice(0, Math.max(0, extra));
+  const tell = [...dueTell, ...extraTake.filter(c => c.kind === 'which')];
+  const deepen = extraTake.filter(c => c.kind !== 'which');
 
   const phaseOf = new Map();
   recall.forEach(c => phaseOf.set(c.id, 'recall'));
@@ -118,11 +112,11 @@ export function composeSession({ deck, getCard, isDue, budget, rng = Math.random
   deepen.forEach(c => phaseOf.set(c.id, 'deepen'));
   tell.forEach(c => phaseOf.set(c.id, 'tell'));
   const meetRecall = meet.filter(c => c.kind === 'recall');
-  const meetCloze = meet.filter(c => c.kind !== 'recall');
+  const meetCtx = meet.filter(c => c.kind !== 'recall');
   const queue = [
     ...shuffleWith(recallDue, rng), ...recallSoon,
     ...shuffleWith(meetRecall, rng),
-    ...shuffleWith(meetCloze, rng),
+    ...shuffleWith(meetCtx, rng),
     ...shuffleWith([...deepen, ...tell], rng),
   ];
   return { queue, phaseOf, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
@@ -131,20 +125,25 @@ export function composeSession({ deck, getCard, isDue, budget, rng = Math.random
 /* ───────────────────────── hint ladder, nudges, grading ───────────────────────── */
 
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.
+//   recall: part of speech (+ transliteration) → the word in one of its verses → first letter of the gloss
+//   ctx/form: the dictionary form → the full parse of this form
 export function hintLadder(card) {
-  const f = card.formula;
-  const meaning = { type: 'meaning', text: f.meaning };
-  const when = { type: 'when', text: f.when };
-  const name = { type: 'name', text: f.name };
-  const hasSym = Array.isArray(f.symbols) && f.symbols.length > 0;
+  const w = card.item;
   switch (card.kind) {
-    case 'recall': return [meaning, ...(hasSym ? [{ type: 'symbols', symbols: f.symbols.map(s => s[0]) }] : []), { type: 'cloze', latex: f.cloze }];
-    case 'cloze': return [meaning, ...(hasSym ? [{ type: 'symbolsFull', symbols: f.symbols }] : [])];
-    case 'use': return [name, when];
-    case 'symbols': return [name, meaning];
-    case 'why': return [meaning, when];
+    case 'recall': return [
+      { type: 'pos', pos: w.pos, tr: w.tr },
+      ...(card.hintToken ? [{ type: 'verse', token: card.hintToken }] : []),
+      { type: 'initial', text: initialOf(w.gloss) },
+    ];
+    case 'ctx':
+    case 'form': return [{ type: 'lemma', item: w.id }, { type: 'parse', token: card.token }];
     default: return [];
   }
+}
+
+function initialOf(gloss) {
+  const g = String(gloss).replace(/^to\s+/i, '').replace(/^[^A-Za-z]+/, '');
+  return g ? `${/^to\s/i.test(gloss) ? 'to ' : ''}${g[0]}…` : '…';
 }
 
 // A hinted answer grades itself: one hint = Hard (2), two or more = Again (1), none = learner grades.
@@ -157,9 +156,9 @@ export function revealLine(hints) {
 }
 
 export const NUDGES = [
-  { text: 'Say it out loud this time.', reason: 'Speaking your answer is as good for memory as thinking it, and saying some cards aloud makes them stand out from the rest (the production effect).' },
-  { text: 'Write it down this time, on paper or in the pad below.', reason: 'A written answer is a commitment. It keeps your self-grading honest, which is what keeps the schedule accurate.' },
-  { text: 'Picture it in your head this time.', reason: 'Retrieving silently strengthens memory as much as writing it out. What matters is the attempt.' },
+  { text: 'Say the Hebrew out loud, then its meaning.', reason: 'Speaking your answer is as good for memory as thinking it, and saying some cards aloud makes them stand out from the rest (the production effect).' },
+  { text: 'Write the meaning down, on paper or in the pad below.', reason: 'A written answer is a commitment. It keeps your self-grading honest, which is what keeps the schedule accurate.' },
+  { text: 'Answer it in your head this time.', reason: 'Retrieving silently strengthens memory as much as writing it out. What matters is the attempt.' },
 ];
 export const nudgeFor = i => NUDGES[((i % NUDGES.length) + NUDGES.length) % NUDGES.length];
 

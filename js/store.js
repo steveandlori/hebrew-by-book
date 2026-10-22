@@ -1,23 +1,24 @@
 // Progress and settings live in the browser (localStorage). Export/import moves them between devices.
 
-const KEY = 'josie-stats-v1';
+const KEY = 'hebrew-by-book-v1';
+const APP = 'hebrew-by-book';
 
 const DEFAULT_SETTINGS = {
-  newPerDay: 10,
+  newPerDay: 10,     // new words a day (each is met as two cards); also caps new deepen/tell-apart cards
   gradeButtons: 3,   // 2 = Not yet / Got it; 3 adds Partly; 4 adds Easy
-  midterm: '',   // YYYY-MM-DD
-  final: '',     // YYYY-MM-DD
   retention: 0.9,
-  introSeen: false, // How it works shown once on first visit
-  showPad: true,    // scratchpad under recall prompts
+  pointing: 'pointed', // 'pointed' (niqqud) or 'unpointed' (consonants only, as on a scroll)
+  hebSize: 'm',        // Hebrew text size: s, m, l
+  introSeen: false,  // How it works shown once on first visit
+  showPad: true,     // writing pad under recall prompts
 };
 
-// Older saves had a boolean fourButtons; map it onto gradeButtons.
 function normalizeSettings(raw) {
   const s = { ...DEFAULT_SETTINGS, ...(raw || {}) };
-  if (raw && raw.gradeButtons === undefined && raw.fourButtons !== undefined) s.gradeButtons = raw.fourButtons ? 4 : 3;
   if (![2, 3, 4].includes(s.gradeButtons)) s.gradeButtons = 3;
-  delete s.fourButtons;
+  if (!['pointed', 'unpointed'].includes(s.pointing)) s.pointing = 'pointed';
+  if (!['s', 'm', 'l'].includes(s.hebSize)) s.hebSize = 'm';
+  if (!(Number(s.newPerDay) > 0)) s.newPerDay = DEFAULT_SETTINGS.newPerDay;
   return s;
 }
 
@@ -25,19 +26,23 @@ function todayKey(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function shape(s) {
+  return {
+    settings: normalizeSettings(s.settings),
+    cards: s.cards || {},          // cardId -> fsrs card (dates as ISO strings)
+    log: s.log || [],              // {id, rating, at, hints}
+    newIntroduced: s.newIntroduced || {}, // dayKey -> [cardIds]
+    sessions: s.sessions || {},    // dayKey -> count of reviews
+    snapshots: s.snapshots || {},  // dayKey -> {stages, avgInterval}, written at wrap-up
+  };
+}
+
 export function loadState() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
   let s = {};
   if (raw) { try { s = JSON.parse(raw); } catch (e) { s = {}; } }
-  return {
-    settings: normalizeSettings(s.settings),
-    cards: s.cards || {},          // cardId -> fsrs card (dates as ISO strings)
-    log: s.log || [],              // {id, rating, at}
-    newIntroduced: s.newIntroduced || {}, // dayKey -> [cardIds]
-    sessions: s.sessions || {},    // dayKey -> count of reviews
-    snapshots: s.snapshots || {},  // dayKey -> {stages, avgInterval}, written at wrap-up
-  };
+  return shape(s);
 }
 
 export function saveState(state) {
@@ -46,20 +51,13 @@ export function saveState(state) {
 }
 
 export function exportState(state) {
-  return JSON.stringify({ app: 'josie-stats', version: 1, exportedAt: new Date().toISOString(), ...state }, null, 2);
+  return JSON.stringify({ app: APP, version: 1, exportedAt: new Date().toISOString(), ...state }, null, 2);
 }
 
 export function importState(text) {
   const s = JSON.parse(text);
-  if (!s || s.app !== 'josie-stats') throw new Error('That file is not a Stats Cards progress file.');
-  return {
-    settings: normalizeSettings(s.settings),
-    cards: s.cards || {},
-    log: s.log || [],
-    newIntroduced: s.newIntroduced || {},
-    sessions: s.sessions || {},
-    snapshots: s.snapshots || {},
-  };
+  if (!s || s.app !== APP) throw new Error('That file is not a Hebrew by Book progress file.');
+  return shape(s);
 }
 
 export function resetState() {

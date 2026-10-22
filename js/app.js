@@ -1,0 +1,836 @@
+import BOOK_DATA from '../data/ruth.js';
+import * as store from './store.js';
+import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, stagesByItem, countStages, stageDiff, composeSession, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
+import { createPad } from './pad.js';
+import { methodHTML } from './method.js';
+
+/* ───────────────────────── helpers ───────────────────────── */
+
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function shuffle(arr) {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function fmtDays(d) {
+  if (d === 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  return `in ${d} days`;
+}
+function fmtDue(due, now = new Date()) {
+  const ms = due - now;
+  if (ms <= 0) return 'now';
+  const min = Math.round(ms / 60000);
+  if (min < 60) return `in ${min} min`;
+  const days = Math.round(ms / 86400000);
+  if (days < 1) return 'later today';
+  return fmtDays(days);
+}
+
+/* ───────────────────────── book and deck ───────────────────────── */
+
+const BOOK = indexBook(BOOK_DATA);
+const BOOK_NAME = BOOK_DATA.book.name;
+const DECK = buildDeck(BOOK);
+const DECK_BY_ID = Object.fromEntries(DECK.map(c => [c.id, c]));
+
+const POS_LABEL = {
+  N: 'noun', Np: 'proper name', V: 'verb', A: 'adjective', Ag: 'gentilic adjective', Ao: 'ordinal number', D: 'adverb',
+  C: 'conjunction', R: 'preposition', T: 'particle', Tm: 'demonstrative particle', Tj: 'interjection',
+  P: 'pronoun', Pp: 'personal pronoun', Pd: 'demonstrative pronoun', Pi: 'interrogative pronoun', Pf: 'indefinite pronoun',
+};
+const posLabel = p => POS_LABEL[p] || p || '';
+const NAME_KIND = tm => /-P$/.test(tm) ? 'person' : /LG$|PG$/.test(tm) ? 'people' : /L$/.test(tm) ? 'place' : 'title';
+
+const refLabel = ref => `${BOOK_NAME} ${ref.replace('.', ':')}`;
+const verseLinks = ref => {
+  const [c, v] = ref.split('.');
+  return `<a href="https://www.stepbible.org/?q=version=OHB|reference=${BOOK_DATA.book.id}.${c}.${v}" target="_blank" rel="noopener">STEP Bible</a><span class="sep"> · </span><a href="https://www.sefaria.org/${BOOK_DATA.book.id}.${c}.${v}?lang=he" target="_blank" rel="noopener">Sefaria</a>`;
+};
+
+/* ───────────────────────── state ───────────────────────── */
+
+let state = store.loadState();
+let scheduler = makeScheduler(state.settings);
+const now = () => new Date();
+
+function persist() {
+  if (!store.saveState(state)) toast('Could not save progress. Is private browsing on?');
+}
+function cardState(id) { return hydrate(state.cards[id]); }
+function isDue(id, at = now()) { const c = cardState(id); return c && c.due <= at; }
+function isNew(id) { return !state.cards[id]; }
+
+function introducedToday() { return state.newIntroduced[store.todayKey()] || []; }
+function newWordAllowance() {
+  const used = introducedToday().filter(id => id.endsWith(':recall')).length;
+  return Math.max(0, state.settings.newPerDay - used);
+}
+function extraAllowance() {
+  const used = introducedToday().filter(id => /:(form|which)/.test(id)).length;
+  return Math.max(0, state.settings.newPerDay - used);
+}
+
+function dueCards(at = now()) {
+  return DECK.filter(c => isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due);
+}
+
+function applyGrade(card, rating, hints = 0) {
+  const at = now();
+  const prev = cardState(card.id) || emptyCard(at);
+  const wasNew = isNew(card.id);
+  const r = grade(scheduler, prev, rating, at);
+  state.cards[card.id] = dehydrate(r.card);
+  state.log.push({ id: card.id, rating, at: at.toISOString(), hints });
+  if (state.log.length > 5000) state.log = state.log.slice(-5000);
+  const day = store.todayKey(at);
+  state.sessions[day] = (state.sessions[day] || 0) + 1;
+  if (wasNew) (state.newIntroduced[day] = state.newIntroduced[day] || []).push(card.id);
+  persist();
+  return r.card;
+}
+
+let stageCache = null;
+function stages() { return stageCache || (stageCache = stagesByItem(DECK, cardState)); }
+function invalidateStages() { stageCache = null; }
+function stageOfLex(id) {
+  const l = BOOK.lexemes.get(id);
+  if (!l || l.affix || l.name) return 'known';
+  return stages().get(id) || 'new';
+}
+
+/* ───────────────────────── Hebrew rendering ───────────────────────── */
+
+const pointed = () => state.settings.pointing !== 'unpointed';
+const tokText = t => pointed() ? t.p : t.c;
+const lemmaText = l => pointed() ? l.he : (l.cons || plain(l.he));
+const heb = (text, cls = '') => `<span class="heb${cls ? ' ' + cls : ''}" lang="he" dir="rtl">${esc(text)}</span>`;
+
+function glossLine(t) {
+  const l = BOOK.lexemes.get(t.lex);
+  return l ? l.gloss : '';
+}
+
+// One word of a verse. o: { highlight, tappable, glosses, stages }
+function tokHTML(t, o, extra = '') {
+  const cls = ['w'];
+  if (o.highlight === t.id) cls.push('hl');
+  if (o.stages) cls.push('st-' + stageOfLex(t.lex));
+  if (extra) cls.push(extra);
+  const gl = o.glosses ? `<small class="gl" dir="ltr" lang="en">${esc(glossLine(t))}</small>` : '';
+  const inner = `<span class="wt">${esc(tokText(t))}${t.j ? '־' : ''}</span>${gl}`;
+  return o.tappable
+    ? `<button type="button" class="${cls.join(' ')}" data-tok="${t.id}">${inner}</button>`
+    : `<span class="${cls.join(' ')}">${inner}</span>`;
+}
+
+// Written (ketiv) and read (qere) forms, both always shown. Pointed mode leads with the read form;
+// unpointed mode leads with the written consonants. Neither is called the correct one.
+function kqHTML(k, qs, o) {
+  const leadQere = pointed();
+  const lead = leadQere ? (qs.length ? qs : [k]) : (k ? [k] : qs);
+  const other = leadQere ? (qs.length && k ? [k] : []) : (k ? qs : []);
+  const lone = !k ? 'read, not written' : !qs.length ? 'written, not read' : null;
+  const leadIsQ = lead[0] && lead[0].kq === 'q';
+  const mark = leadIsQ ? 'ק' : 'כ';
+  const title = lone ? `${lone}` : leadIsQ ? 'Read (qere); the written form (ketiv) follows' : 'Written (ketiv); the read form (qere) follows';
+  const leadHTML = lead.map(t => tokHTML(t, o, lone ? 'lone' : '')).join(' ');
+  const otherHTML = other.length ? `<span class="kq-alt"><span class="kq-tag">${leadIsQ ? 'כ' : 'ק'}</span>${other.map(t => tokHTML(t, { ...o, glosses: false }, 'alt')).join(' ')}</span>` : '';
+  return `<span class="kq${lone ? ' kq-lone' : ''}" title="${esc(title)}">${leadHTML}<sup class="kq-mark" aria-label="${esc(title)}">${mark}</sup>${otherHTML}</span>`;
+}
+
+function verseHTML(v, o = {}) {
+  const byId = new Map(v.t.map(t => [t.id, t]));
+  const done = new Set();
+  let html = '';
+  let joined = false;
+  for (const t of v.t) {
+    if (done.has(t.id)) continue;
+    let part;
+    if (t.kq) {
+      const k = t.kq === 'k' ? t : null;
+      const qs = t.kq === 'k' ? (t.pair || []).map(id => byId.get(id)).filter(Boolean) : [t];
+      [k, ...qs].filter(Boolean).forEach(x => done.add(x.id));
+      part = kqHTML(k, qs, o);
+    } else {
+      part = tokHTML(t, o);
+    }
+    html += (html && !joined ? ' ' : '') + part;
+    joined = !!t.j;
+  }
+  return `<p class="verse heb" lang="he" dir="rtl">${html}<span class="sof">׃</span></p>`;
+}
+
+function segmentsHTML(t) {
+  return `<ul class="segs">${t.segs.map(s => {
+    const l = BOOK.lexemes.get(s.x);
+    return `<li>${heb(pointed() ? s.t : plain(s.t))}<span>${esc(s.g)}</span><span class="muted">${l ? esc(l.gloss) : ''}</span></li>`;
+  }).join('')}</ul>`;
+}
+
+function bdbCite(l) {
+  if (!l || !l.bdb) return '';
+  return `<span class="cite-bdb">BDB p. ${l.bdb.page}${l.def ? `: <em>${esc(l.def)}</em>` : ''}</span>`;
+}
+function glossNote(l) {
+  if (!l.glossNote) return '';
+  return `<p class="source">Gloss adjusted from TBESH's “${esc(l.glossNote.was)}”: ${esc(l.glossNote.why)} (${esc(l.glossNote.source)}).</p>`;
+}
+const sourceLine = () => `<p class="source">Gloss: TBESH (STEPBible.org, CC BY). Definition and page: Brown-Driver-Briggs via the OpenScriptures Lexical Index. Text and parsing: Open Scriptures Hebrew Bible.</p>`;
+
+/* ───────────────────────── card faces ───────────────────────── */
+
+function cardHeader(card, phase = null) {
+  const ph = phase ? `<span class="phase ph-${phase}">${PHASE_LABEL[phase]}</span>` : '';
+  const ch = `<span class="topic">${esc(BOOK_NAME)} ${BOOK.chapterOf(card.item.first)}</span>`;
+  return `<div class="card-meta">${ch}${ph}<span class="card-kind">${KIND_LABEL[card.kind]}</span></div>`;
+}
+
+function verseOfToken(id) { return BOOK.verseOf.get(id); }
+
+function frontHTML(card) {
+  const w = card.item;
+  switch (card.kind) {
+    case 'recall':
+      return `<div class="prompt">What does this word mean?</div><div class="lemma">${heb(lemmaText(w), 'big')}</div>`;
+    case 'ctx':
+    case 'form': {
+      const v = verseOfToken(card.token);
+      return `<div class="prompt">What does the highlighted word mean here?</div>
+        <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, { highlight: card.token })}`;
+    }
+    case 'which': {
+      const v = verseOfToken(card.token);
+      return `<div class="prompt">Which dictionary word is the highlighted form?</div>
+        <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, { highlight: card.token })}`;
+    }
+  }
+}
+
+function formsListHTML(l, max = 8) {
+  const forms = formsOf(BOOK, l);
+  const REFS = 8;
+  const refs = f => f.tokens.slice(0, REFS).map(t => `<a href="#read/${t.ref}">${esc(t.ref.replace('.', ':'))}</a>`).join(', ')
+    + (f.tokens.length > REFS ? `, <a href="#words/${l.id}">+${f.tokens.length - REFS}</a>` : '');
+  const rows = forms.slice(0, max).map(f => `<li>${heb(pointed() ? f.text : f.cons)}<span>${esc(f.parse)}</span><span class="refs-inline">${refs(f)}${f.kq ? ` <span class="chip chip-kq">${f.kq === 'k' ? 'written' : 'read'}</span>` : ''}</span></li>`).join('');
+  const more = forms.length > max ? `<p class="muted">and ${forms.length - max} more forms. <a href="#words/${l.id}">See them all</a></p>` : '';
+  return `<ul class="forms">${rows}</ul>${more}`;
+}
+
+function wordSummaryHTML(l) {
+  return `<div class="wordsum"><div>${heb(lemmaText(l), 'mid')}</div><div><b class="gloss">${esc(l.gloss)}</b>
+    <span class="muted">${esc(posLabel(l.pos))}${l.tr ? ` · ${esc(l.tr)}` : ''} · ${l.n}× in ${esc(BOOK_NAME)}</span><br>${bdbCite(l)}</div></div>`;
+}
+
+function backHTML(card) {
+  const w = card.item;
+  switch (card.kind) {
+    case 'recall':
+      return `${wordSummaryHTML(w)}${glossNote(w)}<h3>Its forms in ${esc(BOOK_NAME)}</h3>${formsListHTML(w, 6)}${sourceLine()}`;
+    case 'ctx':
+    case 'form':
+    case 'which': {
+      const t = BOOK.tokens.get(card.token);
+      const v = verseOfToken(card.token);
+      return `<h3>This form</h3><p class="formline">${heb(tokText(t), 'mid')} <span>${esc(t.parse)}</span></p>${segmentsHTML(t)}
+        <h3>Dictionary word</h3>${wordSummaryHTML(w)}${glossNote(w)}
+        <p class="links">${esc(refLabel(v.ref))}: <a href="#read/${v.ref}">read it in context</a><span class="sep"> · </span>${verseLinks(v.ref)}</p>${sourceLine()}`;
+    }
+  }
+}
+
+/* ───────────────────────── study session ───────────────────────── */
+
+const session = {
+  queue: [], done: 0, total: 0, mode: 'today', revealed: false, current: null, choices: null, picked: null,
+  hints: 0, pad: null, sketch: null, shown: 0, phaseOf: null, counts: null, stagesBefore: null,
+};
+
+function startSession() {
+  session.mode = 'today';
+  session.day = store.todayKey();
+  session.done = 0; session.revealed = false; session.current = null;
+  const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance() });
+  session.queue = r.queue; session.phaseOf = r.phaseOf; session.counts = r.counts;
+  session.stagesBefore = stagesByItem(DECK, cardState);
+  session.total = r.queue.length;
+  renderStudy();
+}
+
+function studyAhead(n = 10) {
+  const at = now();
+  const ahead = DECK.filter(c => !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
+  const extraNew = ahead.length < n ? DECK.filter(c => isNew(c.id) && c.kind === 'recall').slice(0, n - ahead.length) : [];
+  session.queue = shuffle([...ahead, ...extraNew]);
+  session.total = session.done + session.queue.length;
+  if (!session.queue.length) { toast('Nothing left to study ahead. Every card is in rotation.'); return; }
+  renderStudy();
+}
+
+function dropPad() {
+  if (session.pad) { session.pad.destroy(); session.pad = null; }
+}
+
+function nextCard() {
+  session.revealed = false; session.choices = null; session.picked = null;
+  session.hints = 0; session.sketch = null;
+  dropPad();
+  session.current = session.queue.shift() || null;
+  session.shown++;
+  renderStudy();
+}
+
+function onGrade(rating) {
+  const card = session.current;
+  if (!card) return;
+  const updated = applyGrade(card, rating, session.hints);
+  invalidateStages();
+  session.done++;
+  // Cards still in learning come back later in this same session.
+  if (updated.state === State.Learning || updated.state === State.Relearning) {
+    const pos = Math.min(session.queue.length, 3 + Math.floor(Math.random() * 3));
+    session.queue.splice(pos, 0, card);
+    session.total++;
+  }
+  nextCard();
+}
+
+function phaseStripHTML() {
+  if (!session.phaseOf) return '';
+  const left = { recall: 0, meet: 0, deepen: 0, tell: 0 };
+  const pending = session.current ? [session.current, ...session.queue] : session.queue;
+  for (const c of pending) { const p = session.phaseOf.get(c.id); if (p) left[p]++; }
+  const cur = session.current && session.phaseOf.get(session.current.id);
+  return `<div class="phases" aria-label="Today's phases">${Object.keys(PHASE_LABEL).filter(p => session.counts[p] > 0).map(p =>
+    `<span class="ph${left[p] ? '' : ' is-done'}${cur === p ? ' now' : ''}">${PHASE_LABEL[p]}<b>${left[p]}</b></span>`).join('')}</div>`;
+}
+
+function padTitle(card) {
+  const w = card.item;
+  if (card.kind === 'recall') return `Meaning of ${lemmaText(w)}`;
+  const v = verseOfToken(card.token);
+  return `The highlighted word in ${refLabel(v.ref)}`;
+}
+
+function hintHTML(h) {
+  const lbl = t => `<span class="lbl">${t}</span>`;
+  switch (h.type) {
+    case 'pos': return `<li>${lbl('Part of speech')}${esc(posLabel(h.pos))}${h.tr ? `, pronounced ${esc(h.tr)}` : ''}</li>`;
+    case 'verse': { const v = verseOfToken(h.token); return `<li>${lbl(`In ${esc(refLabel(v.ref))}`)}${verseHTML(v, { highlight: h.token })}</li>`; }
+    case 'initial': return `<li>${lbl('The meaning starts with')}${esc(h.text)}</li>`;
+    case 'lemma': { const l = BOOK.lexemes.get(h.item); return `<li>${lbl('Dictionary form')}${heb(lemmaText(l), 'mid')} <span class="muted">${esc(posLabel(l.pos))}</span></li>`; }
+    case 'parse': { const t = BOOK.tokens.get(h.token); return `<li>${lbl('This form')}${esc(t.parse)}</li>`; }
+    default: return '';
+  }
+}
+
+function choicesFor(card) {
+  return shuffle([card.item.id, ...card.distractors]).map(id => BOOK.lexemes.get(id));
+}
+
+function renderStudy() {
+  const view = $('#view');
+  const card = session.current;
+
+  if (!card && !session.queue.length) {
+    if (session.done > 0) { renderWrapUp(); return; }
+    const nothingNew = newWordAllowance() === 0;
+    view.innerHTML = `<div class="card done"><h2>All caught up</h2>
+      <p style="margin-top:10px">${nothingNew ? `You have met today's ${state.settings.newPerDay} new words and nothing is due yet.` : 'Nothing is due right now.'}</p>
+      <div class="row"><button class="btn" id="ahead">Study 10 more</button><a class="btn btn-quiet" href="#read">Read ${esc(BOOK_NAME)}</a></div></div>`;
+    $('#ahead').onclick = () => studyAhead(10);
+    return;
+  }
+
+  if (!card) { nextCard(); return; }
+
+  const remaining = session.queue.length + 1;
+  const pct = session.total ? Math.round((session.done / session.total) * 100) : 0;
+  const isWhich = card.kind === 'which';
+  const fresh = isNew(card.id);
+  const ladder = isWhich ? [] : hintLadder(card);
+  const phase = session.phaseOf ? session.phaseOf.get(card.id) : null;
+
+  let body = `<div class="session-head"><h1>Today</h1><span class="muted">${remaining} left</span><span class="spacer"></span>${fresh ? '<span class="muted">new card</span>' : ''}</div>
+    <div class="progress"><i style="width:${pct}%"></i></div>${phaseStripHTML()}
+    <section class="card" aria-live="polite">${cardHeader(card, phase)}${frontHTML(card)}`;
+
+  if (!isWhich && fresh && card.kind === 'recall') body += `<p class="meet">A new word for this deck. Guess anyway, even a rough one. A guess, even a wrong one, helps the answer stick.</p>`;
+  if (!isWhich && !session.revealed) body += `<p class="nudge">${esc(nudgeFor(session.shown).text)}</p>`;
+  if (session.hints > 0) body += `<ol class="hints" aria-label="Hints">${ladder.slice(0, session.hints).map(hintHTML).join('')}</ol>`;
+
+  if (isWhich) {
+    if (!session.choices) session.choices = choicesFor(card);
+    const keys = ['1', '2', '3', '4'];
+    body += `<div class="choices">${session.choices.map((l, i) => {
+      let res = '';
+      if (session.revealed) res = l.id === card.item.id ? ' data-result="right"' : (session.picked === l.id ? ' data-result="wrong"' : '');
+      return `<button class="choice" data-pick="${l.id}"${res}${session.revealed ? ' disabled' : ''}><span class="key">${keys[i]}</span><span class="opt">${heb(lemmaText(l), 'mid')}<span class="name">${esc(l.gloss)}</span></span></button>`;
+    }).join('')}</div>`;
+  }
+
+  if (session.revealed) {
+    const line = isWhich ? null : revealLine(session.hints);
+    let top = isWhich ? '' : `<p class="aloud">Read the Hebrew aloud once.</p>`;
+    if (line) top += `<p class="reveal-line">${esc(line)}</p>`;
+    const compare = session.sketch
+      ? `<div class="compare"><figure><figcaption>Your answer</figcaption><img src="${session.sketch}" alt="Your handwritten answer"></figure><figure><figcaption>The meaning</figcaption><p class="gloss-big">${esc(card.item.gloss)}</p></figure></div>`
+      : '';
+    body += `<div class="answer">${top}${compare}${backHTML(card)}</div>`;
+
+    const nb = state.settings.gradeButtons;
+    const preview = scheduler.repeat(cardState(card.id) || emptyCard(now()), now());
+    const due = r => fmtDue(preview[r].card.due);
+    const auto = isWhich ? null : autoRating(session.hints);
+    if (isWhich) {
+      const right = session.picked === card.item.id;
+      body += right
+        ? `<div class="grade one"><button class="btn g-good" data-grade="3">Right, next<small>back ${due(3)}</small></button></div>`
+        : `<div class="grade one"><button class="btn g-again" data-grade="1">Not this one, next<small>back ${due(1)}</small></button></div>`;
+      body += `<p class="hint"><span class="kbd">space</span> next</p>`;
+    } else if (auto !== null) {
+      body += `<div class="grade one"><button class="btn g-next" data-grade="${auto}" data-auto="1">Next<small>back ${due(auto)}</small></button></div><p class="hint">Graded for you because you used a hint. <span class="kbd">space</span> next</p>`;
+    } else {
+      const btn = (r, cls, label) => `<button class="btn ${cls}" data-grade="${r}">${label}<small>${due(r)}</small></button>`;
+      const buttons = [btn(1, 'g-again', 'Not yet'), ...(nb >= 3 ? [btn(2, 'g-hard', 'Partly')] : []), btn(3, 'g-good', 'Got it'), ...(nb >= 4 ? [btn(4, 'g-easy', 'Easy')] : [])];
+      body += `<div class="grade n${nb}">${buttons.join('')}</div>`;
+      const keys = nb === 2 ? '<span class="kbd">1</span> not yet &nbsp; <span class="kbd">2</span> got it' : `<span class="kbd">1</span> not yet &nbsp; <span class="kbd">2</span> partly &nbsp; <span class="kbd">3</span> got it${nb === 4 ? ' &nbsp; <span class="kbd">4</span> easy' : ''}`;
+      body += `<p class="hint">${keys}</p>`;
+    }
+  } else if (!isWhich) {
+    if (state.settings.showPad) body += `<div id="padhost"></div><p class="hint"><a href="#" id="hidepad">Hide the writing pad</a></p>`;
+    else body += `<p class="hint"><a href="#" id="showpad">Show a writing pad</a></p>`;
+    body += `<div class="row answer-row"><button class="btn btn-primary" id="reveal">I have an answer</button>${ladder.length ? `<button class="btn" id="hint">${session.hints < ladder.length ? 'Give me a hint' : 'Show me'}</button>` : ''}</div>
+      <p class="hint"><span class="kbd">space</span> answer &nbsp; <span class="kbd">h</span> hint</p>`;
+  }
+  body += '</section>';
+  view.innerHTML = body;
+
+  const captureSketch = () => { if (session.pad) { session.sketch = session.pad.hasInk() ? session.pad.toDataURL() : null; dropPad(); } };
+  const doReveal = () => { captureSketch(); session.revealed = true; renderStudy(); };
+  const host = $('#padhost');
+  if (host) {
+    session.pad = createPad(host, { title: padTitle(card), onAnswer: doReveal });
+    if (session.sketch) session.pad.restore(session.sketch);
+  }
+
+  const reveal = $('#reveal');
+  if (reveal) reveal.onclick = doReveal;
+  const hint = $('#hint');
+  if (hint) hint.onclick = () => {
+    captureSketch();
+    if (session.hints < ladder.length) session.hints++;
+    else { session.hints = Math.max(session.hints, 2); session.revealed = true; }
+    renderStudy();
+  };
+  const hide = $('#hidepad');
+  if (hide) hide.onclick = e => { e.preventDefault(); dropPad(); session.sketch = null; state.settings.showPad = false; persist(); renderStudy(); };
+  const show = $('#showpad');
+  if (show) show.onclick = e => { e.preventDefault(); state.settings.showPad = true; persist(); renderStudy(); };
+  view.querySelectorAll('[data-grade]').forEach(b => { b.onclick = () => onGrade(Number(b.dataset.grade)); });
+  view.querySelectorAll('[data-pick]').forEach(b => {
+    b.onclick = () => {
+      if (session.revealed) return;
+      session.picked = b.dataset.pick;
+      session.revealed = true;
+      renderStudy(); // a right pick counts as Got it, a wrong pick as Not yet
+    };
+  });
+}
+
+function renderWrapUp() {
+  const view = $('#view');
+  const after = stagesByItem(DECK, cardState);
+  const diff = stageDiff(session.stagesBefore || after, after);
+  const day = store.todayKey();
+  state.snapshots[day] = buildSnapshot(countStages(after), DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id)));
+  state.snapshots = pruneSnapshots(state.snapshots, day);
+  persist();
+  const next = DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id).due).sort((a, b) => a - b)[0];
+  const names = ids => ids.length ? `<ul class="moved">${ids.map(id => { const l = BOOK.lexemes.get(id); return `<li>${heb(lemmaText(l))} ${esc(l.gloss)}</li>`; }).join('')}</ul>` : '';
+  const tile = (n, label, ids) => `<div class="stat"><b>${n}</b><span>${label}</span>${names(ids)}</div>`;
+  view.innerHTML = `<div class="card done"><h2>Session done</h2><div class="big">${session.done}</div><p class="muted">cards answered</p>
+    <div class="stats moved-stats">${tile(diff.met.length, diff.met.length === 1 ? 'word met' : 'words met', diff.met)}${tile(diff.graduated.length, 'graduated', diff.graduated)}${tile(diff.solid.length, 'now solid', diff.solid)}</div>
+    <div class="pipeline-wrap">${pipelineHTML(countStages(after))}</div>
+    <p style="margin-top:14px">${next ? `Next cards come due ${fmtDue(next)}.` : ''} Coming back tomorrow matters more than doing more today. Spacing is a big part of what makes this stick.</p>
+    <div class="row"><button class="btn" id="ahead">Study 10 more</button><a class="btn btn-quiet" href="#read">Read a verse</a></div></div>`;
+  $('#ahead').onclick = () => studyAhead(10);
+}
+
+function onKey(e) {
+  if (route !== 'today') return;
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target && /^(input|select|textarea|button|a)$/i.test(e.target.tagName)) return;
+  const card = session.current;
+  if (!card) return;
+  if (!session.revealed) {
+    if (card.kind === 'which' && /^[1-4]$/.test(e.key)) { const b = $(`#view .choice:nth-child(${e.key})`); if (b) b.click(); }
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const b = $('#reveal'); if (b) b.click(); }
+    else if (e.key === 'h' || e.key === 'H') { const b = $('#hint'); if (b) b.click(); }
+    return;
+  }
+  const autoBtn = $('#view [data-auto]');
+  if (card.kind === 'which' || autoBtn) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); const b = autoBtn || $('#view [data-grade]'); if (b) b.click(); }
+    return;
+  }
+  const nb = state.settings.gradeButtons;
+  const map = nb === 2 ? { 1: 1, 2: 3 } : nb === 3 ? { 1: 1, 2: 2, 3: 3 } : { 1: 1, 2: 2, 3: 3, 4: 4 };
+  if (map[e.key]) { const b = $(`#view [data-grade="${map[e.key]}"]`); if (b && !b.disabled) b.click(); }
+}
+
+/* ───────────────────────── read ───────────────────────── */
+
+const reader = { glosses: false, stages: true };
+
+function coverage(verses) {
+  let total = 0, known = 0;
+  for (const v of verses) for (const t of v.t) {
+    if (t.kq === 'k' && t.pair && t.pair.length) continue; // count each place once
+    const l = BOOK.lexemes.get(t.lex);
+    if (!l || l.affix || l.name) continue;
+    total++;
+    const s = stageOfLex(t.lex);
+    if (s === 'graduated' || s === 'solid') known++;
+  }
+  return { total, known, pct: total ? Math.round(known / total * 100) : 0 };
+}
+
+function renderRead(param) {
+  const view = $('#view');
+  let chapter = 1, focus = null;
+  if (param) {
+    const [c, v] = param.split('.').map(Number);
+    if (BOOK.chapters.includes(c)) chapter = c;
+    if (v && BOOK.verses.has(`${c}.${v}`)) focus = `${c}.${v}`;
+  }
+  const verses = BOOK_DATA.verses.filter(v => v.c === chapter);
+  const cov = coverage(verses);
+  const o = { tappable: true, glosses: reader.glosses, stages: reader.stages };
+  view.innerHTML = `<h1>Read ${esc(BOOK_NAME)}</h1>
+    <p class="lead">Read a verse, then tap any word you are unsure of. Words are underlined by how well you know them.</p>
+    <div class="panel read-bar">
+      <div class="seg chapters" role="group" aria-label="Chapter">${BOOK.chapters.map(c => `<a href="#read/${c}" class="${c === chapter ? 'on' : ''}" aria-current="${c === chapter ? 'page' : 'false'}">${c}</a>`).join('')}</div>
+      <div class="row toggles">
+        <label class="tog"><input type="checkbox" id="tg-gloss" ${reader.glosses ? 'checked' : ''}> Glosses under words</label>
+        <label class="tog"><input type="checkbox" id="tg-stage" ${reader.stages ? 'checked' : ''}> Show what I know</label>
+      </div>
+      <p class="small">Words you have graduated cover <b>${cov.pct}%</b> of chapter ${chapter} (${cov.known} of ${cov.total} running words, names and prefixes aside).
+        <button class="linkish" id="pick">Pick a verse for me</button></p>
+      <p class="small legend"><span class="w st-new"><span class="wt">new</span></span> <span class="w st-learning"><span class="wt">learning</span></span> <span class="w st-graduated"><span class="wt">graduated</span></span> <span class="w st-solid"><span class="wt">solid</span></span> · <a href="#kq">Written and read: ${BOOK_DATA.kq.length} places</a></p>
+    </div>
+    <div class="reader size-${state.settings.hebSize}">${verses.map(v => `<div class="vblock" id="v-${v.ref}"><a class="vnum" href="#read/${v.ref}" aria-label="${esc(refLabel(v.ref))}">${v.v}</a>${verseHTML(v, o)}</div>`).join('')}</div>
+    <div class="row" style="justify-content:space-between">${chapter > 1 ? `<a class="btn btn-quiet" href="#read/${chapter - 1}">Chapter ${chapter - 1}</a>` : '<span></span>'}${chapter < BOOK.chapters.length ? `<a class="btn" href="#read/${chapter + 1}">Chapter ${chapter + 1}</a>` : ''}</div>
+    <aside id="sheet" class="sheet" hidden></aside>`;
+  $('#tg-gloss').onchange = e => { reader.glosses = e.target.checked; renderRead(param); };
+  $('#tg-stage').onchange = e => { reader.stages = e.target.checked; renderRead(param); };
+  $('#pick').onclick = () => {
+    const scored = verses.map(v => ({ v, c: coverage([v]) })).filter(x => x.c.pct < 100 || x.c.total === 0);
+    const best = (scored.length ? scored : verses.map(v => ({ v, c: coverage([v]) }))).sort((a, b) => b.c.pct - a.c.pct)[0];
+    reader.glosses = false;
+    location.hash = `#read/${best.v.ref}`;
+  };
+  view.querySelectorAll('[data-tok]').forEach(b => b.onclick = () => openSheet(b.dataset.tok));
+  if (focus) {
+    const el = document.getElementById(`v-${focus}`);
+    if (el) { el.classList.add('focus'); setTimeout(() => el.scrollIntoView({ block: 'center' }), 0); }
+  }
+}
+
+function kqNote(t) {
+  const place = BOOK_DATA.kq.find(e => e.k === t.id || e.q.includes(t.id));
+  if (!place) return '';
+  const k = place.k ? BOOK.tokens.get(place.k) : null;
+  const qs = place.q.map(id => BOOK.tokens.get(id));
+  const row = (label, x) => x ? `<li><span class="lbl">${label}</span>${heb(label === 'Written' ? x.c : x.p, 'mid')} <span>${esc(x.parse)}</span> <span class="muted">${esc(BOOK.lexemes.get(x.lex).gloss)}</span></li>` : `<li><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written' ? 'written' : 'read'} here</span></li>`;
+  return `<div class="kqbox"><b>Written and read differ here</b> <span class="muted">(${esc(place.diff.join(', '))})</span>
+    <ul>${row('Written', k)}${qs.length ? qs.map(q => row('Read', q)).join('') : row('Read', null)}</ul></div>`;
+}
+
+function openSheet(id) {
+  const t = BOOK.tokens.get(id);
+  const sheet = $('#sheet');
+  if (!t || !sheet) return;
+  const l = BOOK.lexemes.get(t.lex);
+  const v = BOOK.verseOf.get(id);
+  const stage = stageOfLex(t.lex);
+  sheet.innerHTML = `<div class="sheet-in"><button class="btn btn-small sheet-x" aria-label="Close">Close</button>
+    <p class="formline">${heb(tokText(t), 'mid')} <span>${esc(t.parse)}</span></p>
+    ${segmentsHTML(t)}
+    ${kqNote(t)}
+    <h3>Dictionary word ${stage !== 'known' ? `<span class="chip chip-stage-${stage}">${STAGE_LABEL[stage]}</span>` : ''}</h3>
+    ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(NAME_KIND(l.tm))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
+    <p class="links">${esc(refLabel(v.ref))}: ${verseLinks(v.ref)}</p></div>`;
+  sheet.hidden = false;
+  $('.sheet-x', sheet).onclick = () => { sheet.hidden = true; };
+}
+
+/* ───────────────────────── written and read ───────────────────────── */
+
+function renderKq() {
+  const view = $('#view');
+  const items = BOOK_DATA.kq.map((e, i) => {
+    const v = BOOK.verses.get(e.ref);
+    const k = e.k ? BOOK.tokens.get(e.k) : null;
+    const qs = e.q.map(id => BOOK.tokens.get(id));
+    const hl = (k || qs[0]).id;
+    const reading = (label, x, text) => x
+      ? `<div class="reading"><span class="lbl">${label}</span>${heb(text, 'mid')}<span>${esc(x.parse)}</span><span class="muted">${esc(BOOK.lexemes.get(x.lex).gloss)} · ${bdbCite(BOOK.lexemes.get(x.lex))}</span></div>`
+      : `<div class="reading"><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written (ketiv)' ? 'written' : 'read'} here</span></div>`;
+    return `<li class="panel kqitem"><div class="row"><b>${esc(refLabel(e.ref))}</b><span class="spacer"></span><span class="chip chip-kq">${esc(e.diff.join(', '))}</span></div>
+      ${verseHTML(v, { highlight: hl })}
+      <details${i === 0 ? '' : ''}><summary>Work out both readings, then check</summary>
+        ${reading('Written (ketiv)', k, k ? k.c : '')}
+        ${qs.length ? qs.map(q => reading('Read (qere)', q, pointed() ? q.p : q.c)).join('') : reading('Read (qere)', null, '')}
+        <p class="links"><a href="#read/${e.ref}">Read it in context</a><span class="sep"> · </span>${verseLinks(e.ref)}</p>
+      </details></li>`;
+  }).join('');
+  view.innerHTML = `<h1>Written and read</h1>
+    <p class="lead">In ${BOOK_DATA.kq.length} places in ${esc(BOOK_NAME)} the consonants as written (ketiv, כְּתִיב) and the text as read (qere, קְרֵי) differ. Both are kept here, each with its own parse and dictionary word. Neither is presented as the correct one; the tag says only what differs.</p>
+    <p class="small muted">Parses follow the Open Scriptures Hebrew Bible's tagging, which is one reading of each form. The written forms carry no vowels in the Leningrad Codex, so their parse is an interpretation of consonants.</p>
+    <ul class="kqlist">${items}</ul>`;
+}
+
+/* ───────────────────────── words and names ───────────────────────── */
+
+const wordsUi = { q: '', sort: 'order', ch: 0 };
+
+function renderWords(param) {
+  const view = $('#view');
+  const st = stages();
+  const list = () => {
+    const q = wordsUi.q.trim().toLowerCase();
+    const qh = plain(wordsUi.q.trim());
+    let items = BOOK.vocab.filter(l => (!wordsUi.ch || BOOK.chapterOf(l.first) === wordsUi.ch)
+      && (!q || l.gloss.toLowerCase().includes(q) || (l.def || '').toLowerCase().includes(q) || (qh && plain(l.he).includes(qh))));
+    if (wordsUi.sort === 'freq') items = items.slice().sort((a, b) => b.n - a.n || a.order - b.order);
+    if (wordsUi.sort === 'heb') items = items.slice().sort((a, b) => plain(a.he).localeCompare(plain(b.he), 'he'));
+    if (!items.length) return '<p class="muted">No words match.</p>';
+    return `<ul class="flist words">${items.map(l => {
+      const s = st.get(l.id) || 'new';
+      return `<li id="w-${l.id}"><details${param === l.id ? ' open' : ''}><summary><span class="wrow">${heb(lemmaText(l), 'mid')}<span class="wg"><b>${esc(l.gloss)}</b> <span class="muted">${esc(posLabel(l.pos))} · ${l.n}×</span></span><span class="chip chip-stage-${s}">${STAGE_LABEL[s]}</span></span></summary>
+        <div class="wbody"><p class="small">${bdbCite(l)}${l.tr ? ` · ${esc(l.tr)}` : ''} · first in ${esc(l.first.replace('.', ':'))}</p>${glossNote(l)}${formsListHTML(l, 50)}</div></details></li>`;
+    }).join('')}</ul>`;
+  };
+  view.innerHTML = `<h1>Words in ${esc(BOOK_NAME)}</h1><p class="lead">All ${BOOK.vocab.length} words the cards teach, in the order they are introduced. Names have <a href="#names">their own list</a>; prefixes and suffixes are explained when you tap a word in Read.</p>
+    <div class="row filters"><input class="search" id="q" type="search" placeholder="Search English or Hebrew" aria-label="Search words" value="${esc(wordsUi.q)}">
+      <select id="sort" aria-label="Sort"><option value="order">Order introduced</option><option value="freq">Most frequent</option><option value="heb">Hebrew A–Z</option></select>
+      <select id="ch" aria-label="Chapter"><option value="0">All chapters</option>${BOOK.chapters.map(c => `<option value="${c}">First in chapter ${c}</option>`).join('')}</select></div>
+    <div class="panel" id="wl">${list()}</div>`;
+  $('#sort').value = wordsUi.sort; $('#ch').value = String(wordsUi.ch);
+  $('#q').oninput = e => { wordsUi.q = e.target.value; $('#wl').innerHTML = list(); };
+  $('#sort').onchange = e => { wordsUi.sort = e.target.value; $('#wl').innerHTML = list(); };
+  $('#ch').onchange = e => { wordsUi.ch = Number(e.target.value); $('#wl').innerHTML = list(); };
+  if (param) { const el = document.getElementById(`w-${param}`); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 0); }
+}
+
+function renderNames() {
+  const view = $('#view');
+  view.innerHTML = `<h1>Names in ${esc(BOOK_NAME)}</h1><p class="lead">People, places and peoples, kept apart from the vocabulary cards. Tap a reference to read it.</p>
+    <div class="panel"><ul class="flist names">${BOOK.names.map(l => {
+      const toks = (l.occ || []).map(id => BOOK.tokens.get(id));
+      const refs = [...new Set(toks.map(t => t.ref))];
+      return `<li><div class="wrow">${heb(lemmaText(l), 'mid')}<span class="wg"><b>${esc(l.gloss)}</b> <span class="muted">${esc(NAME_KIND(l.tm))} · ${l.n}×</span></span></div>
+        <p class="small refs-inline">${refs.map(r => `<a href="#read/${r}">${esc(r.replace('.', ':'))}</a>`).join(', ')}</p></li>`;
+    }).join('')}</ul></div>`;
+}
+
+/* ───────────────────────── progress ───────────────────────── */
+
+function streak() {
+  let n = 0; const d = new Date();
+  if (!state.sessions[store.todayKey(d)]) d.setDate(d.getDate() - 1);
+  while (state.sessions[store.todayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+function pipelineHTML(counts) {
+  const tiles = STAGES.map(s => `<div class="stage st-${s}"><b>${counts[s]}</b><span>${STAGE_LABEL[s]}</span></div>`).join('');
+  const bar = STAGES.map(s => counts[s] ? `<i class="st-${s}" style="flex:${counts[s]}" title="${STAGE_LABEL[s]}: ${counts[s]}"></i>` : '').join('');
+  return `<div class="stages">${tiles}</div><div class="pipe" role="img" aria-label="${STAGES.map(s => `${STAGE_LABEL[s]} ${counts[s]}`).join(', ')}">${bar}</div>`;
+}
+
+function momentumHTML(at) {
+  const days = [...Array(14)].map((_, i) => { const d = new Date(at); d.setDate(d.getDate() - (13 - i)); return store.todayKey(d); });
+  const vals = days.map(k => state.sessions[k] || 0);
+  const max = Math.max(1, ...vals);
+  const fmt = k => { const [, m, d] = k.split('-'); return `${Number(m)}/${Number(d)}`; };
+  const bars = `<div class="spark" role="img" aria-label="Reviews per day over the last 14 days: ${vals.join(', ')}">${vals.map((v, i) =>
+    `<i class="${v ? '' : 'zero'}" style="height:${Math.max(4, Math.round(v / max * 100))}%" title="${days[i]}: ${v}"></i>`).join('')}</div>
+    <div class="spark-axis muted"><span>${fmt(days[0])}</span><span>today</span></div>`;
+  const reviewCards = DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id)).filter(c => c.state === State.Review);
+  let line = '';
+  if (reviewCards.length) {
+    const nowAvg = buildSnapshot({}, reviewCards).avgInterval;
+    const weekAgo = new Date(at); weekAgo.setDate(weekAgo.getDate() - 7);
+    const twoWeeksAgo = new Date(at); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const key7 = store.todayKey(weekAgo), key14 = store.todayKey(twoWeeksAgo);
+    const pastKey = Object.keys(state.snapshots || {}).filter(k => k <= key7 && k >= key14).sort().pop();
+    const then = pastKey ? Number(state.snapshots[pastKey]?.avgInterval) : NaN;
+    line = Number.isFinite(then)
+      ? `Review cards now come back every ${nowAvg} days on average, ${nowAvg > then ? 'up from' : nowAvg < then ? 'down from' : 'the same as'} ${esc(String(then))} a week ago.`
+      : `Review cards now come back every ${nowAvg} days on average. Check back next week to see the gap grow.`;
+  }
+  return `${bars}${line ? `<p class="small" style="margin-top:10px">${line}</p>` : ''}`;
+}
+
+function renderProgress() {
+  const view = $('#view');
+  const at = now();
+  const seen = DECK.filter(c => !isNew(c.id));
+  const learned = seen.filter(c => cardState(c.id).state === State.Review);
+  const due = dueCards(at).length;
+  const today = state.sessions[store.todayKey()] || 0;
+  const st = stages();
+  const counts = countStages(st);
+  const cov = coverage(BOOK_DATA.verses);
+
+  const chapterBars = BOOK.chapters.map(c => {
+    const all = BOOK.vocab.filter(l => BOOK.chapterOf(l.first) === c);
+    const done = all.filter(l => ['graduated', 'solid'].includes(st.get(l.id)));
+    const cc = coverage(BOOK_DATA.verses.filter(v => v.c === c));
+    return `<div class="bar"><span>Chapter ${c}</span><span class="track"><i style="width:${cc.pct}%"></i></span><span class="muted">${cc.pct}% · ${done.length}/${all.length} new words</span></div>`;
+  }).join('');
+
+  const rows = BOOK.vocab.map(l => {
+    const cards = DECK.filter(c => c.item.id === l.id && !isNew(c.id));
+    if (!cards.length) return { l, r: null };
+    const rs = cards.map(c => retrievability(scheduler, cardState(c.id), at)).filter(x => x !== null);
+    return { l, r: rs.length ? Math.min(...rs) : null };
+  }).filter(x => x.r !== null).sort((a, b) => a.r - b.r).slice(0, 40);
+
+  view.innerHTML = `<h1>Progress</h1>
+    <div class="panel"><h2>Reading ${esc(BOOK_NAME)}</h2><p>Words you have graduated cover <b>${cov.pct}%</b> of the book's running text (${cov.known} of ${cov.total} words, names and prefixes aside).</p>
+      <div class="bars">${chapterBars}</div></div>
+    <div class="panel"><h2>Where your words are</h2>${pipelineHTML(counts)}
+      <p class="small muted" style="margin-top:10px">A word is <b>Learning</b> once you have met it, <b>Graduated</b> after three correct recalls, and <b>Solid</b> when it comes back a week or more apart and you can pick it out in a verse among look-alikes.</p></div>
+    <div class="panel"><div class="stats">
+      <div class="stat"><b>${due}</b><span>due now</span></div>
+      <div class="stat"><b>${learned.length}</b><span>of ${DECK.length} cards learned</span></div>
+      <div class="stat"><b>${streak()}</b><span>day streak</span></div>
+      <div class="stat"><b>${today}</b><span>answered today</span></div>
+      <div class="stat"><b>${seen.length - learned.length}</b><span>still learning</span></div>
+      <div class="stat"><b>${DECK.length - seen.length}</b><span>not seen yet</span></div>
+    </div></div>
+    <div class="panel"><h2>Momentum</h2><p class="small muted">Reviews per day. The gap between reviews grows as words get stronger, so the same deck takes less time each week.</p>${momentumHTML(at)}</div>
+    <div class="panel"><h2>Predicted recall right now</h2><p class="small muted">The scheduler's estimate of the chance you would recall each word if asked this minute, weakest first (up to 40).</p>
+    ${rows.length ? `<ul class="flist">${rows.map(({ l, r }) => `<li class="recall-row"><span class="name">${heb(lemmaText(l))} ${esc(l.gloss)} <span class="chip chip-stage-${st.get(l.id)}">${STAGE_LABEL[st.get(l.id)]}</span></span><span class="recall"><b>${Math.round(r * 100)}%</b></span></li>`).join('')}</ul>` : '<p class="muted">Nothing studied yet.</p>'}</div>`;
+}
+
+/* ───────────────────────── settings ───────────────────────── */
+
+function renderSettings() {
+  const view = $('#view');
+  const s = state.settings;
+  const srcs = BOOK_DATA.sources.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>. ${esc(x.licence)}. Credit: ${esc(x.credit)}. Pinned at commit <code>${esc(x.commit.slice(0, 7))}</code>.</li>`).join('');
+  view.innerHTML = `<h1>Settings</h1>
+    <div class="panel">
+      <div class="field"><label for="npd">New words per day</label><span class="help">Each new word arrives as two cards (the word, then the word in its verse). The same number caps new practice cards for words you already know. ${BOOK.vocab.length} words at 10 a day takes about ${Math.ceil(BOOK.vocab.length / 10)} days.</span>
+        <select id="npd">${[3, 5, 10, 15, 20].map(n => `<option value="${n}" ${s.newPerDay === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div class="field"><label>Hebrew text</label><span class="help">Pointed shows the vowel points. Unpointed shows consonants only, as a scroll would; in places where the written and read text differ it leads with the written consonants.</span>
+        <div class="seg" role="group"><button data-pt="pointed" aria-pressed="${s.pointing === 'pointed'}">Pointed</button><button data-pt="unpointed" aria-pressed="${s.pointing === 'unpointed'}">Unpointed</button></div></div>
+      <div class="field"><label>Hebrew size</label>
+        <div class="seg" role="group">${[['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, n]) => `<button data-hs="${k}" aria-pressed="${s.hebSize === k}">${n}</button>`).join('')}</div></div>
+      <div class="field"><label>Grading buttons</label><span class="help">Partly records progress without perfection: the card keeps the ground it has gained instead of starting over, and comes back sooner than after Got it. Easy pushes a card out further than most memories have earned, so it is off by default.</span>
+        <div class="seg" role="group"><button data-gb="2" aria-pressed="${s.gradeButtons === 2}">Not yet / Got it</button><button data-gb="3" aria-pressed="${s.gradeButtons === 3}">+ Partly</button><button data-gb="4" aria-pressed="${s.gradeButtons === 4}">+ Easy</button></div></div>
+      <div class="field"><label>Writing pad</label><span class="help">A space under each question to write your answer by finger, stylus or mouse. Writing keeps self-grading honest.</span>
+        <div class="seg" role="group"><button data-pad="1" aria-pressed="${s.showPad}">Show</button><button data-pad="0" aria-pressed="${!s.showPad}">Hide</button></div></div>
+    </div>
+    <div class="panel"><h2>Your progress</h2><p class="small muted">Progress is saved in this browser only. Export it to move to another phone or laptop, or as a backup.</p>
+      <div class="actions"><button class="btn" id="export">Export progress</button><label class="btn file-btn">Import progress<input type="file" id="import" accept="application/json,.json"></label><button class="btn danger" id="reset">Start over</button></div></div>
+    <div class="panel"><h2>Sources</h2><ul class="small srcs">${srcs}
+      <li>Hebrew type: <a href="https://github.com/notofonts/hebrew" target="_blank" rel="noopener">Noto Serif Hebrew</a>, SIL Open Font License 1.1.</li>
+      <li>Scheduling: <a href="https://github.com/open-spaced-repetition/ts-fsrs" target="_blank" rel="noopener">ts-fsrs</a> (MIT).</li></ul>
+      <p class="small muted">Glosses are TBESH's short glosses, shortened to their general sense (the part before TBESH's colon). TBESH's longer definitions are not used. Cantillation marks are not shown.</p></div>`;
+
+  const save = () => { scheduler = makeScheduler(state.settings); persist(); toast('Saved'); };
+  $('#npd').onchange = e => { s.newPerDay = Number(e.target.value); save(); };
+  view.querySelectorAll('[data-pt]').forEach(b => b.onclick = () => { s.pointing = b.dataset.pt; save(); renderSettings(); });
+  view.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { s.hebSize = b.dataset.hs; applyHebSize(); save(); renderSettings(); });
+  view.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { s.gradeButtons = Number(b.dataset.gb); save(); renderSettings(); });
+  view.querySelectorAll('[data-pad]').forEach(b => b.onclick = () => { s.showPad = b.dataset.pad === '1'; save(); renderSettings(); });
+  $('#export').onclick = () => {
+    const blob = new Blob([store.exportState(state)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `hebrew-by-book-progress-${store.todayKey()}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#import').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try { state = store.importState(await file.text()); scheduler = makeScheduler(state.settings); invalidateStages(); applyHebSize(); persist(); toast('Progress imported'); renderSettings(); }
+    catch (err) { toast(err.message || 'Could not read that file'); }
+  };
+  $('#reset').onclick = () => {
+    if (confirm('Erase all progress on this device? Export first if you want a backup.')) { state = store.resetState(); scheduler = makeScheduler(state.settings); invalidateStages(); applyHebSize(); toast('Progress cleared'); renderSettings(); }
+  };
+}
+
+function applyHebSize() {
+  document.documentElement.dataset.hebSize = state.settings.hebSize;
+}
+
+/* ───────────────────────── how it works ───────────────────────── */
+
+function renderMethod() {
+  const view = $('#view');
+  const first = !state.settings.introSeen;
+  view.innerHTML = methodHTML({ firstVisit: first, wordCount: BOOK.vocab.length, bookName: BOOK_NAME });
+  if (first) { state.settings.introSeen = true; store.saveState(state); }
+}
+
+/* ───────────────────────── routing ───────────────────────── */
+
+// Coming back to Today the same day continues the session instead of rebuilding it.
+// A finished session picks up any cards that have come due since the wrap-up.
+function resumeOrStart() {
+  const sameDay = session.day === store.todayKey();
+  if (!sameDay) { startSession(); return; }
+  if (session.current || session.queue.length) { renderStudy(); return; }
+  const fresh = dueCards().filter(c => !isNew(c.id));
+  if (fresh.length) {
+    session.queue.push(...fresh);
+    session.total += fresh.length;
+    if (session.phaseOf) fresh.forEach(c => { if (!session.phaseOf.has(c.id)) session.phaseOf.set(c.id, c.kind === 'which' ? 'tell' : 'recall'); });
+  }
+  renderStudy();
+}
+
+let route = 'today';
+function navigate() {
+  const raw = (location.hash || '#today').slice(1);
+  let [hash, param] = raw.split('/');
+  const views = ['today', 'read', 'kq', 'words', 'names', 'progress', 'method', 'settings'];
+  if (!views.includes(hash)) hash = 'today';
+  // First visit: explain the method before the first card.
+  if (!state.settings.introSeen && hash === 'today') { hash = 'method'; try { history.replaceState(null, '', '#method'); } catch (e) { /* ignore */ } }
+  route = hash;
+  const tab = hash === 'kq' ? 'read' : hash;
+  document.querySelectorAll('.tabs a').forEach(a => { if (a.dataset.view === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  scheduler = makeScheduler(state.settings);
+  dropPad();
+  invalidateStages();
+  if (route === 'today') resumeOrStart();
+  else if (route === 'read') renderRead(param);
+  else if (route === 'kq') renderKq();
+  else if (route === 'words') renderWords(param);
+  else if (route === 'names') renderNames();
+  else if (route === 'progress') renderProgress();
+  else if (route === 'method') renderMethod();
+  else renderSettings();
+  if (!(route === 'read' && param && param.includes('.')) && !(route === 'words' && param)) window.scrollTo({ top: 0 });
+}
+
+applyHebSize();
+window.addEventListener('hashchange', navigate);
+document.addEventListener('keydown', onKey);
+navigate();

@@ -3,90 +3,93 @@ import assert from 'node:assert/strict';
 import { composeSession } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
-const f = (id, kinds = ['recall', 'cloze', 'use']) => kinds.map(k => ({ id: `${id}:${k}`, kind: k, formula: { id } }));
-const sc = id => ({ id: `sc:${id}`, kind: 'scenario', formula: { id } });
+const w = (id, kinds = ['recall', 'ctx', 'form']) => kinds.map(k => ({ id: `${id}:${k}`, kind: k, item: { id } }));
+const wh = id => ({ id: `${id}:which`, kind: 'which', item: { id } });
 const rev = (st = 9) => ({ state: State.Review, stability: st, due: new Date(0) });
 const rng = () => 0.5; // deterministic shuffle
 const phases = (r, p) => r.queue.filter(c => r.phaseOf.get(c.id) === p).map(c => c.id);
+const none = () => null, never = () => false;
 
-test('budget of 1 takes only the recall card of a new formula', () => {
-  const deck = [...f('a'), ...f('b')];
-  const r = composeSession({ deck, getCard: () => null, isDue: () => false, budget: 1, rng });
-  assert.deepEqual(phases(r, 'meet'), ['a:recall']);
-  assert.equal(r.queue.length, 1);
+test('newWords counts words, each met as a recall + in-verse pair', () => {
+  const deck = [...w('a'), ...w('b'), ...w('c')];
+  const r = composeSession({ deck, getCard: none, isDue: never, newWords: 2, extra: 0, rng });
+  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['a:recall', 'a:ctx', 'b:recall', 'b:ctx']));
+  assert.equal(r.queue.length, 4);
 });
-test('new formulas are met as recall + cloze pairs in deck order', () => {
-  const deck = [...f('a'), ...f('b'), ...f('c')];
-  const r = composeSession({ deck, getCard: () => null, isDue: () => false, budget: 4, rng });
-  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['a:recall', 'a:cloze', 'b:recall', 'b:cloze']));
-  assert.deepEqual(phases(r, 'deepen'), []);
+test('ten new words a day means twenty meet cards', () => {
+  const deck = Array.from({ length: 15 }, (_, i) => w(`w${i}`)).flat();
+  const r = composeSession({ deck, getCard: none, isDue: never, newWords: 10, rng });
+  assert.equal(r.counts.meet, 20);
 });
-test('due non-scenario cards are recall; due scenario cards are tell', () => {
-  const deck = [...f('a'), sc('a')];
-  const cards = { 'a:recall': rev(), 'a:cloze': rev(), 'a:use': rev(), 'sc:a': rev() };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:recall' || id === 'sc:a', budget: 0, rng });
+test('words are met in deck order', () => {
+  const deck = [...w('a'), ...w('b'), ...w('c')];
+  const r = composeSession({ deck, getCard: none, isDue: never, newWords: 1, rng });
+  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['a:recall', 'a:ctx']));
+});
+test('due non-which cards are recall; due which cards are tell apart', () => {
+  const deck = [...w('a'), wh('a')];
+  const cards = { 'a:recall': rev(), 'a:ctx': rev(), 'a:form': rev(), 'a:which': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:recall' || id === 'a:which', newWords: 0, rng });
   assert.deepEqual(phases(r, 'recall'), ['a:recall']);
-  assert.deepEqual(phases(r, 'tell'), ['sc:a']);
+  assert.deepEqual(phases(r, 'tell'), ['a:which']);
 });
-test('graduated formulas get deepen and tell-apart cards before new meets, up to half the budget', () => {
-  const deck = [...f('a'), sc('a'), ...f('b')];
-  const cards = { 'a:recall': rev(), 'a:cloze': rev() }; // a graduated; a:use and sc:a unseen; b new
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => false, budget: 4, rng });
-  assert.deepEqual(phases(r, 'tell'), ['sc:a']);
-  assert.deepEqual(phases(r, 'deepen'), ['a:use']);
-  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['b:recall', 'b:cloze']));
+test('graduated words get form and Which word? cards from the extra budget, alongside new meets', () => {
+  const deck = [...w('a'), wh('a'), ...w('b')];
+  const cards = { 'a:recall': rev(), 'a:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 1, extra: 2, rng });
+  assert.deepEqual(phases(r, 'tell'), ['a:which']);
+  assert.deepEqual(phases(r, 'deepen'), ['a:form']);
+  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['b:recall', 'b:ctx']));
 });
-test('use cards of a formula still learning are not introduced', () => {
-  const deck = [...f('a')];
-  const cards = { 'a:recall': { state: State.Learning, stability: 1, due: new Date(0) }, 'a:cloze': rev() };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => false, budget: 5, rng });
+test('the extra budget caps deepen + tell apart and interleaves them', () => {
+  const deck = [...w('a'), wh('a'), ...w('b'), wh('b')];
+  const cards = { 'a:recall': rev(), 'a:ctx': rev(), 'b:recall': rev(), 'b:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 0, extra: 2, rng });
+  assert.equal(r.counts.deepen, 1);
+  assert.equal(r.counts.tell, 1);
+});
+test('form cards of a word still learning are not introduced', () => {
+  const deck = [...w('a')];
+  const cards = { 'a:recall': { state: State.Learning, stability: 1, due: new Date(0) }, 'a:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 5, rng });
   assert.deepEqual(phases(r, 'deepen'), []);
-});
-test('leftover budget after meets goes back to deepen cards', () => {
-  const deck = [...f('a', ['recall', 'cloze', 'use', 'symbols', 'why'])];
-  const cards = { 'a:recall': rev(), 'a:cloze': rev() };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => false, budget: 3, rng });
-  assert.deepEqual(new Set(phases(r, 'deepen')), new Set(['a:use', 'a:symbols', 'a:why']));
-});
-test('budget never exceeded when meets and deepens compete', () => {
-  const deck = [...f('a', ['recall', 'cloze', 'use', 'symbols', 'why']), sc('a'), ...f('b'), ...f('c')];
-  const cards = { 'a:recall': rev(), 'a:cloze': rev() };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => false, budget: 5, rng });
-  assert.equal(r.queue.length, 5);
 });
 test('recall block comes first, then meet, then deepen/tell', () => {
-  const deck = [...f('a'), sc('a'), ...f('b')];
-  const cards = { 'a:recall': rev(), 'a:cloze': rev() };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:cloze', budget: 4, rng });
+  const deck = [...w('a'), wh('a'), ...w('b')];
+  const cards = { 'a:recall': rev(), 'a:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:ctx', newWords: 1, extra: 2, rng });
   const order = r.queue.map(c => r.phaseOf.get(c.id));
   const first = p => order.indexOf(p), last = p => order.lastIndexOf(p);
   assert.ok(last('recall') < first('meet'));
   assert.ok(last('meet') < Math.min(first('deepen'), first('tell')));
   assert.deepEqual(r.counts, { recall: 1, meet: 2, deepen: 1, tell: 1 });
 });
-
-test('a cloze card left behind by an odd budget is introduced in a later session as meet', () => {
-  const deck = [...f('a'), ...f('b')];
-  const cards = { 'a:recall': { state: State.Learning, stability: 1, due: new Date(0) } }; // a met, its cloze still new; b new
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => false, budget: 1, rng });
-  assert.deepEqual(phases(r, 'meet'), ['a:cloze']);
-  assert.deepEqual(phases(r, 'recall'), ['a:recall']); // still in learning steps, so it stays in the session
-  assert.equal(r.queue.length, 2);
+test('an in-verse card left behind is finished as meet without using a new word', () => {
+  const deck = [...w('a'), ...w('b')];
+  const cards = { 'a:recall': { state: State.Learning, stability: 1, due: new Date(0) } };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 1, rng });
+  assert.deepEqual(new Set(phases(r, 'meet')), new Set(['a:ctx', 'b:recall', 'b:ctx']));
+  assert.deepEqual(phases(r, 'recall'), ['a:recall']);
 });
-test('a cloze card already seen is not re-added by the meet pair', () => {
-  const deck = [...f('a')];
-  const cards = { 'a:cloze': rev() }; // odd imported state: cloze seen, recall not
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:cloze', budget: 4, rng });
+test('an in-verse card already seen is not re-added by the meet pair', () => {
+  const deck = [...w('a')];
+  const cards = { 'a:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:ctx', newWords: 4, rng });
   assert.deepEqual(phases(r, 'meet'), ['a:recall']);
-  assert.deepEqual(phases(r, 'recall'), ['a:cloze']);
+  assert.deepEqual(phases(r, 'recall'), ['a:ctx']);
   assert.equal(new Set(r.queue.map(c => c.id)).size, r.queue.length);
 });
-
 test('cards in learning steps that are not yet due still belong to the session, after the due ones', () => {
-  const deck = [...f('a'), ...f('b')];
+  const deck = [...w('a'), ...w('b')];
   const learning = due => ({ state: State.Learning, stability: 1, due });
-  const cards = { 'a:recall': learning(new Date(Date.now() + 5 * 60000)), 'b:recall': { state: State.Review, stability: 9, due: new Date(0) } };
-  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'b:recall', budget: 0, rng });
+  const cards = { 'a:recall': learning(new Date(Date.now() + 5 * 60000)), 'b:recall': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'b:recall', newWords: 0, rng });
   assert.deepEqual(phases(r, 'recall'), ['b:recall', 'a:recall']);
   assert.equal(r.counts.recall, 2);
+});
+test('zero allowances still serve due cards', () => {
+  const deck = [...w('a'), ...w('b')];
+  const cards = { 'a:recall': rev(), 'a:ctx': rev() };
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: id => id === 'a:recall', newWords: 0, extra: 0, rng });
+  assert.deepEqual(r.queue.map(c => c.id), ['a:recall']);
 });
