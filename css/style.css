@@ -516,3 +516,11 @@ button.w:hover { background: var(--pen-soft); }
 .abbr summary { cursor: pointer; color: var(--pen); font-size: 14px; }
 .abbr ul { padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
 .kqnote { margin-top: 8px; color: var(--ink-2); }
+.tabs .short { display: none; }
+@media (max-width: 520px) {
+  .tabs a { padding: 8px 6px 10px; font-size: 13.5px; }
+  .tabs .long { display: none; }
+  .tabs .short { display: inline; }
+}
+body.sheet-open .view { padding-bottom: 72dvh; }
+.vblock:focus { outline: none; }

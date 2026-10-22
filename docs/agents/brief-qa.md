@@ -17,8 +17,9 @@ Read `docs/agents/COMMON.md` and `docs/agents/DESIGN.md` first. Report file: `do
 
 1. **First visit**: `/#today` on a clean state lands on `#method` (h1 "How it works"); `.refs li` count 23; every
    `.cite a` number has a matching `#ref-N`. Clicking "Start today's session" shows Today.
-2. **Day 1 composition** (newPerDay 10): the phase strip shows only "Meet 20". Card kinds alternate as recall
-   (`.lemma .heb` present) then ctx (exactly one `.verse .w.hl`).
+2. **Day 1 composition** (newPerDay 10): the phase strip shows only "Meet 20". All 10 recall cards (`.lemma .heb` present) come
+   first, then the 10 ctx cards (exactly one `.verse .w.hl`): meet every word, then see each in its verse (corrected
+   after QA run 1, which found the plan, not the app, was wrong).
 3. **Hint ladder**: on a recall card, `#hint` three times gives `.hints li` labels Part of speech, In Ruth X:Y (with a
    `.verse` inside), The meaning starts with; the fourth press reveals. A hinted card shows a single "Next" button
    (`[data-auto]`), and grading it advances.

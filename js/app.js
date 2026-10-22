@@ -489,7 +489,7 @@ function renderRead(param) {
   view.querySelectorAll('[data-tok]').forEach(b => b.onclick = () => openSheet(b.dataset.tok));
   if (focus) {
     const el = document.getElementById(`v-${focus}`);
-    if (el) { el.classList.add('focus'); setTimeout(() => el.scrollIntoView({ block: 'center' }), 0); }
+    if (el) { el.classList.add('focus'); el.tabIndex = -1; setTimeout(() => { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }, 0); }
   }
 }
 
@@ -519,7 +519,8 @@ function openSheet(id) {
     ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(nameKind(l))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
     <p class="links">${esc(refLabel(v.ref))}: ${verseLinks(v.ref)}</p></div>`;
   sheet.hidden = false;
-  $('.sheet-x', sheet).onclick = () => { sheet.hidden = true; };
+  document.body.classList.add('sheet-open');
+  $('.sheet-x', sheet).onclick = () => { sheet.hidden = true; document.body.classList.remove('sheet-open'); };
 }
 
 /* ───────────────────────── written and read ───────────────────────── */
@@ -770,6 +771,7 @@ function navigate() {
   scheduler = makeScheduler(state.settings);
   dropPad();
   invalidateStages();
+  document.body.classList.remove('sheet-open');
   if (route === 'today') resumeOrStart();
   else if (route === 'read') renderRead(param);
   else if (route === 'kq') renderKq();
