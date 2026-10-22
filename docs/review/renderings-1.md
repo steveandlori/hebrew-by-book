@@ -123,3 +123,42 @@ them: לָקַח "take" vs. לָקַט "glean", and וַתָּשָׁב "she retu
 4. A non-noun with a suffix appends the object pronoun ("exception you", #4).
 5. Reflexive Niphal stem glosses ("oneself") are not inflected for person (#2).
 6. `PREFIX_EN` כְּ = "like" before numbers and infinitives (#24, #25). לְ = "to" before a participle used as a noun (#26).
+
+## Confirmation pass (commit cd15d24)
+
+Method: I rebuilt the compact listing of the regenerated `docs/review/ruth-renderings.md` (still 1,306 rows) and
+diffed the English column against my first-pass copy. 96 rows changed; the other 1,210 are identical. I also read
+the new override entries in `pipeline/overrides/ruth.json`. The labels below are VERIFIED (data): I saw each row.
+
+**MUST-FIX #1–8: all fixed.**
+- #1 08j1i, 089gS: "why?". #2 084W9: "shut yourselves off". #3 0875P: "in my womb / inner parts", with `_number_glosses` H4578 added.
+- #4 081bY: "except you". #5 083iR: "touching you (f)". #6 08LGP, 08cog, 08Vgg: "witnesses" (rule fix). #7 084Ed: "to/for you". #8 08sHf: "it was bitter".
+
+**SHOULD-FIX #9–31: 22 fixed, 1 fixed with a problem.**
+- Fixed: #9–16 (every "it" and "he" subject correction, including 08pu1 "and he will be" and 08vdQ "let him be"); #17 085KE "was in a stir" (`_stems` H1949 N added); #18 08w4T "reached / held out" (gloss H6642); #19 08NQN; #20 08pww; #21 08Azu "whose?"; #22 08PTT "there is not"; #23 08cgg "our kindred" (gloss H4130); #25 08cK8 "as their (f) coming (in)"; #26 08ssA "as nurse"; #27 08tKf, 08D3a "the one stationed (over)"; #28 "Ephrathites" and "Moabites"; #29 all six הַיּוֹם rows are now "today"; #30 08WeU "and from (אֵת)", which works, stays neutral and does not pick a reading of the crux; #31 08Ap3 "I became old".
+- **Wrongly fixed, MINOR: #24 08Mjg "about an ephah of".** כְּאֵיפָה is absolute, not construct. The added "an" and "of" smooth the text, against the "no smoothing / articles literal" convention. Propose "about ephah" or "about an ephah", without "of". 085gQ "about ten" is fine.
+
+**MINOR items**
+- Fixed: 08S38 "since"; 08wJn "to be"; 08T97 "to go / walk"; 08bmv, 08doW, 0876o "the two of them"; 086n2 "at time of"; אֲשֶׁר → "which / who"; דָּבָר → "word / matter"; 085oN, 08Tgd "as woman / wife"; H5234a reordered, so 2:10 now shows "to notice me" and 2:19 "noticing you (f)".
+- 08WDP is now "to the ground". The added article is a small departure from the literal convention. I had written "(the)", so I accept it.
+- Not applied, by the coordinator's choice, and still open as MINOR: 08G2d (partitive), 08rWk (עַד אִם), 08BYa ("there(ward)"), and the comparative מִן note.
+
+**Override checks**
+- `_stems` H3045 N is still "to be known". 3:3 is fixed per word in `_renderings` instead, which is adequate because Ruth has no other Niphal of the verb. My QUESTIONABLE label is resolved in practice.
+- New gloss entries H6642, H4130, H369, H834a and H1697 match the BDB wording I quoted in section 1.
+
+**Look-alike notes (12 entries plus the original 2)**
+- All 12 are present, and their wording matches section 3. The pages now come from the pinned LexicalIndex, which replaces my from-memory pages. I did not re-check those pages.
+- The H1350a note's references (Is 59:3, Lam 4:14) match the BDB גָּאַל II entry I read on Sefaria.
+- The לָקַח/לָקַט and וַתֵּשֶׁב/וַתָּשָׁב notes are accurate: all four words occur in Ruth, at 2:3ff., 1:6/22 and 2:14.
+
+**Regression scan**
+- Plural rule: the only plural changes in the whole diff are the three עֵדִים rows and the two gentilics. No noun was double-pluralized, and none ending in "s" changed wrongly. **No regression.**
+- "which / who" shows up on 38 rows. It also lands on things ("the place which / who", "the cloak which / who", "all which / who you did"). This is noisy but not wrong, under the two-senses convention. MINOR, no action needed.
+- Niphal participle rule: only 08tKf, 08D3a and the Hithpael 08tkJ changed. 08tkJ "determined" for מִתְאַמֶּצֶת is fine.
+- כְּ + infinitive rule: only 08cK8 changed. 08zTj כַּאֲשֶׁר is unaffected.
+- הַיּוֹם rule: exactly 6 rows, and no other יוֹם form changed (בְּיוֹם, יְמֵי).
+- No ketiv/qere row changed.
+- **New MINOR, collision:** the single "neighbor" spelling means רֵעַ (08QZx, 08rnW) and שָׁכֵן (08wp8) now have identical English. The old "neighbour" spelling was the only thing keeping them apart. If they should stay distinct, consider "dweller nearby" for שָׁכֵן (BDB p. 1015, "inhabitant, neighbour").
+
+**Net:** all 8 MUST-FIX and all 23 SHOULD-FIX findings are fixed, one of them (#24) with a smoothing slip. I found no regressions from the rule changes, and two new MINOR points (#24's wording and the "neighbor" collision).

@@ -20,6 +20,7 @@ Next: fix QA findings → publish (repo + Pages) → update board, STATUS → re
 | Date | Step | Who | State |
 | --- | --- | --- | --- |
 | 2026-10-22 | English per word (pipeline/english.py) + look-alikes; sheet/card layout: English, brief line, Full parse folded | coordinator | done, tests 48 py / 61 js |
-| 2026-10-22 | Renderings review | general-purpose | brief docs/agents/brief-renderings.md → docs/review/renderings-1.md (running) |
+| 2026-10-22 | Renderings review | general-purpose | docs/review/renderings-1.md: 8 must / 23 should / 12 minor; applied; confirmation pass: all must fixed, 22/23 should (08Mjg then trimmed) |
+| 2026-10-22 | Publish | coordinator | pushed to main; Pages |
 
-Next: apply confirmed findings → rebuild → tests → commit + push → check live.
+Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa there(ward), comparative מִן note.

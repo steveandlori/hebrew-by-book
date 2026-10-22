@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-22 (evening)',
-    headline: 'Ruth is live: reviewed by three independent agents, fixes confirmed, QA verdict SHIP.',
+    asOf: '2026-10-22 (late evening)',
+    headline: 'Your first feedback is live: plain English for every word in its verse, and “Don’t confuse” notes (אֶל vs אֵל).',
     stats: [
       { label: 'Ruth words taught', value: '286' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '109' },
+      { label: 'tests passing', value: '110' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -89,8 +89,8 @@ const BOARD = {
         { t: 'Plain English for every word in its verse (“and she went / walked”), short breakdown after, full parse folded away', s: 'done' },
         { t: 'Verb senses by stem from BDB (e.g. 1:20 Hiphil “made bitter”, 4:18 “fathered”); participles used as nouns (“redeemer”)', s: 'done' },
         { t: '“Don’t confuse” notes: same-letter words in Ruth listed automatically, plus reviewed notes (אֶל vs אֵל “God”)', s: 'done' },
-        { t: 'Independent review of all 1,306 renderings against parse and BDB', s: 'doing' },
-        { t: 'Fix confirmed findings, then publish', s: 'todo' },
+        { t: 'Independent review of all 1,306 renderings against parse and BDB: 8 must-fix, 23 should-fix, all fixed and confirmed', s: 'done' },
+        { t: 'Publish', s: 'done' },
       ] },
     { id: 'm3', title: 'More books', status: 'later',
       summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
@@ -115,6 +115,7 @@ const BOARD = {
   docs: [
     { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
     { title: 'Review packet: every word’s English', href: 'docs/review/ruth-renderings.md', blurb: 'All 1,306 words of Ruth with form, parse, gloss and the generated English, verse by verse.', date: '2026-10-22' },
+    { title: 'Renderings review', href: 'docs/review/renderings-1.md', blurb: 'Every word’s English checked against its parse and BDB; findings, override checks, look-alike proposals, and the confirmation pass.', date: '2026-10-22' },
     { title: 'QA report', href: 'docs/review/qa-1.md', blurb: 'Written-plan QA: 13 scenarios including a 7-day simulation with a faked clock. Verdict SHIP.', date: '2026-10-22' },
     { title: 'Content review B (independent sources)', href: 'docs/review/content-B.md', blurb: 'Every gloss checked against BDB on Sefaria; found the H9 affix bug and about 40 glosses that missed Ruth’s sense. Most fixes trace to this report.', date: '2026-10-22' },
     { title: 'Content review A (cited sources)', href: 'docs/review/content-A.md', blurb: 'Re-derived every join, count and parse independently of the pipeline.', date: '2026-10-22' },

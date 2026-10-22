@@ -65,7 +65,7 @@
   "H1697": {"gloss": "word, matter", "why": "3:18 and 4:7 are 'matter'", "source": "BDB p. 182, Ru 3:18, 4:7"},
   "H7387": {"gloss": "emptily, empty-handed", "why": "BDB: in empty condition", "source": "BDB p. 938, Ru 1:21, 3:17"},
   "H7872": {"gloss": "old age, grey hair", "why": "Ruth 4:15, your old age", "source": "BDB p. 966"},
-  "H7934": {"gloss": "neighbor", "why": "Ruth 4:17, the women neighbours", "source": "BDB p. 1015"},
+  "H7934": {"gloss": "neighbor, inhabitant", "why": "Ruth 4:17, the women neighbours", "source": "BDB p. 1015"},
   "H3966": {"gloss": "very", "def": "", "why": "the short definition shown was 'muchness'", "source": "BDB p. 547"},
   "H4994": {"def": "I pray", "why": "the short definition 'I' is a truncation of BDB's 'I pray'", "source": "BDB p. 609"},
   "H1961": {"def": "", "why": "the short definition 'fall out' is a sub-sense, not the meaning", "source": "BDB p. 224"},
@@ -120,7 +120,7 @@
     "H4578": {"s": "inner parts", "p": "womb / inner parts", "why": "only plural; 1:11 is the womb", "source": "BDB p. 588 (3), Ru 1:11"},
     "H2416a": {"s": "alive", "p": "living", "why": "2:20 הַחַיִּים 'the living' beside 'the dead'", "source": "BDB p. 311, Ru 2:20"},
     "H2205": {"s": "old", "p": "elders", "why": "the plural is used as a noun, 'the elders' of the town (4:2, 4, 9, 11)", "source": "BDB p. 278, Ru 4:2"},
-    "H7934": {"s": "neighbor", "p": "neighbors", "why": "4:17 the women neighbors (plural); one spelling, 'neighbor', throughout", "source": "BDB p. 1015, Ru 4:17"}
+    "H7934": {"s": "neighbor / inhabitant", "p": "neighbors / inhabitants", "why": "4:17 the women neighbors (plural); BDB's 'inhabitant, neighbour' keeps it apart from רֵעַ 'neighbor'", "source": "BDB p. 1015, Ru 4:17"}
   },
   "_participles": {
     "_comment": "Verbs whose participle is used as a noun in Ruth: the English is the noun, with 'the', 'our', 'of' as the form has them.",
@@ -174,7 +174,7 @@
     "08Azu": {"en": "whose?", "why": "לְמִי 'to whom? whose?'", "source": "BDB p. 566, Ru 2:5"},
     "08PTT": {"en": "there is not", "why": "אֵין denying existence: 'there is none'", "source": "BDB p. 34, Ru 4:4"},
     "085gQ": {"en": "about ten", "why": "כְּ with numbers: 'about'", "source": "BDB p. 453, Ru 1:4"},
-    "08Mjg": {"en": "about an ephah of", "why": "כְּ with measures: 'about'", "source": "BDB p. 453, Ru 2:17"},
+    "08Mjg": {"en": "about an ephah", "why": "כְּ with measures: 'about'", "source": "BDB p. 453, Ru 2:17"},
     "08ssA": {"en": "as nurse", "why": "לְ 'as, for' with the participle used as a noun", "source": "BDB p. 52, Ru 4:16"},
     "08Ap3": {"en": "I became old", "why": "'be or become old': I am too old to be with a man", "source": "BDB p. 278, Ru 1:12"},
     "08WeU": {"en": "and from (אֵת)", "why": "a known crux: the data tags אֵת as the object marker after מִן; left literal, no reading chosen", "source": "Ru 4:5; docs/review/renderings-1.md #30"},

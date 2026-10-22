@@ -789,7 +789,7 @@ Columns: token id, form (pointed; ketiv unpointed), kq (k written / q read), OSH
 | 08k7H | אֲשֶׁר |  | relative particle | אֲשֶׁר: which, who | which / who |
 | 08r6F | לִקֵּטָה |  | Piel perfect (qatal), 3fs | לָקַט: to glean, gather | she gleaned / gathered |
 | 08Ugz | וַיְהִי |  | conjunction + Qal wayyiqtol, 3ms | הָיָה: to be | and it was |
-| 08Mjg | כְּאֵיפָה |  | preposition + noun, fs, absolute | אֵיפָה: ephah | about an ephah of * |
+| 08Mjg | כְּאֵיפָה |  | preposition + noun, fs, absolute | אֵיפָה: ephah | about an ephah * |
 | 08mdR | שְׂעֹרִים |  | noun, fp, absolute | שְׂעֹרָה: barley | barley |
 
 ## 2:18
@@ -1655,7 +1655,7 @@ Columns: token id, form (pointed; ketiv unpointed), kq (k written / q read), OSH
 |---|---|---|---|---|---|
 | 08un2 | וַתִּקְרֶאנָה |  | conjunction + Qal wayyiqtol, 3fp | קָרָא: to call | and they (f) called |
 | 084Ei | לוֹ |  | preposition + pronominal suffix, 3ms | ל: to/for | to/for him |
-| 08wp8 | הַשְּׁכֵנוֹת |  | definite article + adjective, fp, absolute | שָׁכֵן: neighbor | the neighbors |
+| 08wp8 | הַשְּׁכֵנוֹת |  | definite article + adjective, fp, absolute | שָׁכֵן: neighbor, inhabitant | the neighbors / inhabitants |
 | 08fZr | שֵׁם |  | noun, ms, absolute | שֵׁם: name | name |
 | 08qsm | לֵאמֹר |  | preposition + Qal infinitive construct | אָמַר: to say | to say |
 | 08Yvd | יֻלַּד |  | Pual perfect (qatal), 3ms | יָלַד: to bear, beget | he was born |
