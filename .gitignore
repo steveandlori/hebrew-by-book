@@ -1,0 +1,6 @@
+# Pinned source downloads (python pipeline/fetch_sources.py). TBESH asks not to be redistributed.
+data/sources/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.playwright-mcp/

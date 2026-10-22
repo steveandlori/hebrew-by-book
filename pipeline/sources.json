@@ -1,0 +1,40 @@
+{
+  "_comment": "Pinned inputs for the data build. Bump a commit on purpose, re-run fetch_sources.py, update the sha256 values, rebuild. Downloaded files land in data/sources/ (gitignored). TBESH asks not to be redistributed, so only derived glosses are published, with attribution.",
+  "sources": {
+    "oshb": {
+      "name": "Open Scriptures Hebrew Bible (Westminster Leningrad Codex with morphology)",
+      "repo": "openscriptures/morphhb",
+      "commit": "3d15126fb1ef74867fc1434be1942e837932691f",
+      "licence": "Lemma and morphology CC BY 4.0; WLC text public domain",
+      "credit": "Open Scriptures Hebrew Bible Project",
+      "url": "https://github.com/openscriptures/morphhb",
+      "files": {
+        "wlc/Ruth.xml": "fb6a2660383c7176941cb87b2be182ef634b66d49d057635869f4d9cb1f0a11e"
+      }
+    },
+    "hebrewlexicon": {
+      "name": "OpenScriptures Hebrew Lexicon (Lexical Index, Brown-Driver-Briggs)",
+      "repo": "openscriptures/HebrewLexicon",
+      "commit": "21c9add13bc727d3a951361778e97e3ff7afd1ce",
+      "licence": "CC BY 4.0; BDB and Strong's text public domain",
+      "credit": "Open Scriptures Hebrew Bible Project",
+      "url": "https://github.com/openscriptures/HebrewLexicon",
+      "files": {
+        "AugIndex.xml": "e7217ca8ff8ff3f21f9cf1bbe87411adf55f6aa88bcf5ed9ddc886cc6b160c5d",
+        "LexicalIndex.xml": "8f7a605c58899d2f44430149c143c00903976e1e91232476677972a69e5bc85f",
+        "BrownDriverBriggs.xml": "2b52658a4323d91674cda4090ab8b3ebddfff640f4f18143c28300e80b2c38f8"
+      }
+    },
+    "tbesh": {
+      "name": "TBESH, Translators Brief lexicon of Extended Strongs for Hebrew (glosses only)",
+      "repo": "STEPBible/STEPBible-Data",
+      "commit": "ed476a8ee6e3f7b3a46fc48af6c7dabc02387b1d",
+      "licence": "CC BY 4.0 (STEPBible.org, Tyndale House Cambridge). The Meaning column is Online Bible material and is NOT used.",
+      "credit": "STEPBible.org, based on work at Tyndale House Cambridge",
+      "url": "https://github.com/STEPBible/STEPBible-Data",
+      "files": {
+        "Lexicons/TBESH - Translators Brief lexicon of Extended Strongs for Hebrew - STEPBible.org CC BY.txt": "464dccadd95fd8620dd05fa0d7a4caba58ec3c4d5db3ebf38e43d046ca25b591"
+      }
+    }
+  }
+}
