@@ -52,8 +52,8 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-22 (late afternoon)',
-    headline: 'Three independent reviews done and their findings fixed; QA running before the site goes live.',
+    asOf: '2026-10-22 (evening)',
+    headline: 'Ruth is live: reviewed by three independent agents, fixes confirmed, QA verdict SHIP.',
     stats: [
       { label: 'Ruth words taught', value: '286' },
       { label: 'names (own tab)', value: '30' },
@@ -62,13 +62,14 @@ const BOARD = {
       { label: 'links live', value: '90/90' },
     ],
     links: [
-      { label: 'Live site (after first push)', href: 'https://steveandlori.github.io/hebrew-by-book/' },
+      { label: 'Live site', href: 'https://steveandlori.github.io/hebrew-by-book/' },
+      { label: 'GitHub repo', href: 'https://github.com/steveandlori/hebrew-by-book' },
       { label: 'STATUS.md (narrative)', href: 'STATUS.md' },
     ],
   },
   roadmap: [
-    { id: 'm1', title: 'First slice: Ruth, end to end', status: 'active',
-      summary: 'Data pipeline from pinned sources (OSHB text and parsing, TBESH glosses, BDB citations) with ketiv and qere both kept; the guided Today loop adapted from josie-stats; Read, Written and read, Words, Names, Progress, Settings. Independent content and code review running; QA and publishing to follow.',
+    { id: 'm1', title: 'First slice: Ruth, end to end', status: 'done',
+      summary: 'Data pipeline from pinned sources (OSHB text and parsing, TBESH glosses, BDB citations) with ketiv and qere both kept; the guided Today loop adapted from josie-stats; Read, Written and read, Words, Names, Progress, Settings. Reviewed, fixed, confirmed, QA’d and published 2026-10-22.',
       tasks: [
         { t: 'Pipeline: pinned, checksummed sources; both readings first-class; fails loudly on gaps', s: 'done' },
         { t: 'Morphology decoded from OSHB’s published code tables (fixes lomed’s participle and stem bugs)', s: 'done' },
@@ -78,11 +79,11 @@ const BOARD = {
         { t: 'Content review A (cited sources) and B (independent: BDB via Sefaria, GKC): 8 must-fix found, all fixed', s: 'done' },
         { t: 'Fresh code review: 6 should-fix, all fixed', s: 'done' },
         { t: 'Fix confirmed findings (about 60 gloss corrections, each citing a BDB page)', s: 'done' },
-        { t: 'Reviewers confirm the fixes', s: 'doing' },
-        { t: 'QA agent with written test plan, multi-day simulation', s: 'doing' },
-        { t: 'Publish: public GitHub repo + Pages', s: 'todo' },
+        { t: 'Reviewers confirm the fixes', s: 'done' },
+        { t: 'QA agent with written test plan, 7-day simulation: SHIP', s: 'done' },
+        { t: 'Publish: public GitHub repo + Pages', s: 'done' },
       ] },
-    { id: 'm2', title: 'Deepen Ruth', status: 'next',
+    { id: 'm2', title: 'Deepen Ruth', status: 'active',
       summary: 'Ideas banked, in rough priority: verb parsing drills (Steve: wanted, not top priority); ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works (vocabulary spacing, words in context) with DOI checks.',
       tasks: [] },
     { id: 'm3', title: 'More books', status: 'later',
@@ -90,8 +91,10 @@ const BOARD = {
       tasks: [] },
   ],
   actions: [
-    { id: 'a1', title: 'Nothing needed from you right now', urgency: 'later', unblocks: 'n/a',
-      advice: 'You gave permission to publish to a public GitHub repo with Pages, so that will happen without you once review and QA pass.', done: false },
+    { id: 'a1', title: 'Try it, then tell me the pace', urgency: 'soon', unblocks: 'the right default for new words a day',
+      advice: 'QA measured about 60 card views on day 1 and about 150 by day 7 at 10 new words a day. If that is heavy, Settings → New words per day → 5.', done: false },
+    { id: 'a2', title: 'One small text question: 3:14 qere holam', urgency: 'later', unblocks: 'how the read form of 3:14 is displayed',
+      advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
     { id: 't1', date: '2026-10-22', title: 'Try a Today session (once the site is live)',
@@ -103,6 +106,7 @@ const BOARD = {
   ],
   docs: [
     { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
+    { title: 'QA report', href: 'docs/review/qa-1.md', blurb: 'Written-plan QA: 13 scenarios including a 7-day simulation with a faked clock. Verdict SHIP.', date: '2026-10-22' },
     { title: 'Content review B (independent sources)', href: 'docs/review/content-B.md', blurb: 'Every gloss checked against BDB on Sefaria; found the H9 affix bug and about 40 glosses that missed Ruth’s sense. Most fixes trace to this report.', date: '2026-10-22' },
     { title: 'Content review A (cited sources)', href: 'docs/review/content-A.md', blurb: 'Re-derived every join, count and parse independently of the pipeline.', date: '2026-10-22' },
     { title: 'Code review', href: 'docs/review/code-1.md', blurb: 'Fresh-agent review of the code; found the 4:6 maqqef and stale-session bugs.', date: '2026-10-22' },

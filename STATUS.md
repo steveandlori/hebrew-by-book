@@ -7,10 +7,10 @@ Last updated: 2026-10-22. The board (`board.html`) is the one-stop view; this fi
 | Item | State |
 | --- | --- |
 | App | First slice for Ruth built: Today (guided loop), Read, Written and read, Words, Names, Progress, How it works, Settings. Tested in Chromium at phone width. |
-| Data | `data/ruth.js`, built by `python pipeline/build.py Ruth` from pinned, checksummed sources: 85 verses, 1,306 tokens, 285 vocabulary words, 30 names, 13 written/read places. |
-| Tests | `python -m pytest pipeline/tests -q` (32), `node --test test/*.test.mjs` (49), `node test/board.check.mjs`, `python test/linkcheck.py` (90/90 live). |
-| Review | Content review A (cited sources), content review B (independent sources, other model), fresh code review: running. |
-| Publishing | Not yet pushed. Steve gave permission on 2026-10-22 for a public repo `steveandlori/hebrew-by-book` with GitHub Pages. |
+| Data | `data/ruth.js`, built by `python pipeline/build.py Ruth` from pinned, checksummed sources plus `pipeline/overrides/ruth.json` (about 60 reviewed corrections, each citing BDB): 85 verses, 1,306 tokens, 286 vocabulary words, 30 names, 13 written/read places. |
+| Tests | `python -m pytest pipeline/tests -q` (39), `node --test test/*.test.mjs` (58), `node test/board.check.mjs`, `python test/linkcheck.py` (90/90 live). CI runs all but the link check on every push. |
+| Review | Done 2026-10-22: content review A (cited sources), content review B (BDB via Sefaria, GKC; other model), fresh code review, then confirmation passes by A and B, then QA with a written plan (13 scenarios, 7-day simulation): verdict SHIP. Reports in `docs/review/`. |
+| Publishing | https://github.com/steveandlori/hebrew-by-book (public), Pages from `main` root: https://steveandlori.github.io/hebrew-by-book/ |
 
 ## How to run it locally
 
@@ -46,13 +46,32 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 11. **Font**: Noto Serif Hebrew (SIL OFL), vendored, rather than SBL Hebrew (which needs its own licence acceptance).
 12. **Look**: a warm parchment palette, distinct from josie-stats' blue.
 
+13. **Gloss corrections** live in `pipeline/overrides/ruth.json`, each with a reason and a BDB page; the app shows the
+    original TBESH gloss beside a corrected one. Spellings BDB treats as one word are merged (יָלַךְ into הָלַךְ,
+    טְרוֹם into טֶרֶם). Counts are per place: a written/read pair counts once, and so does a two-word name.
+14. **3:3 and 3:4** carry a neutral note: the written ending ־תי is the usual 1cs ending and also an older 2fs
+    spelling (GKC §44h); the read ending ־תְּ is 2fs. OSHB's parse of the written form (1cs) is still shown, attributed.
+15. **Order of a day**: all of the day's new words first, then each in its verse (as in josie-stats).
+
+## Pace: what a day costs (QA's 7-day simulation, answering everything right)
+
+Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,
+since reviews of earlier words stack up before their gaps grow. If that is too much, 5 new words a day roughly halves it
+(Settings). The gaps grow quickly once words are Solid, so the load peaks and then falls; the simulation stopped at day 7.
+
 ## Things found along the way
 
 - lomed's OSHB parser (an earlier project) dropped every qere and mis-decoded participles and some stems; the parser here
   was written fresh from OSHB's code tables, and the tests pin the cases lomed got wrong. Notes: `reference/lomed/README.md`.
 - TBESH has several "head" rows for 644 numbers; picking the first one turned חַיִל ("strength") into the place name
   "Helech". Fixed by letting OSHB decide name vs word.
-- The OSHB qere in 3:14 carries a holam on the final vav (מַרְגְּלוֹתָיוֹ); kept as in the source.
+- The OSHB qere in 3:14 carries a holam on the final vav (מַרְגְּלוֹתָיוֹ); kept as in the source. Review B judges it a
+  stray mark copied from the ketiv pointing. Open question for Steve: keep, or show the conventional מַרְגְּלוֹתָיו?
+- Review found that TBESH's first gloss is often a general sense where Ruth uses another (glean, sit, bear, winnow,
+  nurse, grow up), and that cutting TBESH glosses at the colon lost the Ruth sense of נָחַם ("comfort").
+- Not applied, on purpose: seven of review B's minor gloss suggestions that BDB on Sefaria did not confirm
+  (bundle, turn, except for זוּלָה, quiet, eat one's fill, left over, shame).
+- Names keep the lexicon's qamats qatan (נׇעֳמִי); the verse text has the plain qamats sign. Same vowel, two code points.
 
 ## Banked ideas (not started)
 
