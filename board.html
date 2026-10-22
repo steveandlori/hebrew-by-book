@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-22 (afternoon)',
-    headline: 'First slice of Ruth built, tested, and in independent review before it goes live.',
+    asOf: '2026-10-22 (late afternoon)',
+    headline: 'Three independent reviews done and their findings fixed; QA running before the site goes live.',
     stats: [
-      { label: 'Ruth words taught', value: '285' },
+      { label: 'Ruth words taught', value: '286' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '81' },
+      { label: 'tests passing', value: '97' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -74,11 +74,12 @@ const BOARD = {
         { t: 'Morphology decoded from OSHB’s published code tables (fixes lomed’s participle and stem bugs)', s: 'done' },
         { t: 'Deck: word, word-in-verse, other forms, Which word? (look-alike dictionary words)', s: 'done' },
         { t: 'App views and Hebrew typography (vendored Noto Serif Hebrew, pointed/unpointed)', s: 'done' },
-        { t: 'Unit tests (Python 32, JS 49) and link check (90/90)', s: 'done' },
-        { t: 'Content review A (cited sources) and B (independent sources, other model)', s: 'doing' },
-        { t: 'Fresh code review', s: 'doing' },
-        { t: 'Fix confirmed findings', s: 'todo' },
-        { t: 'QA agent with written test plan, multi-day simulation', s: 'todo' },
+        { t: 'Unit tests (Python 39, JS 58) and link check (90/90)', s: 'done' },
+        { t: 'Content review A (cited sources) and B (independent: BDB via Sefaria, GKC): 8 must-fix found, all fixed', s: 'done' },
+        { t: 'Fresh code review: 6 should-fix, all fixed', s: 'done' },
+        { t: 'Fix confirmed findings (about 60 gloss corrections, each citing a BDB page)', s: 'done' },
+        { t: 'Reviewers confirm the fixes', s: 'doing' },
+        { t: 'QA agent with written test plan, multi-day simulation', s: 'doing' },
         { t: 'Publish: public GitHub repo + Pages', s: 'todo' },
       ] },
     { id: 'm2', title: 'Deepen Ruth', status: 'next',
@@ -102,6 +103,9 @@ const BOARD = {
   ],
   docs: [
     { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
+    { title: 'Content review B (independent sources)', href: 'docs/review/content-B.md', blurb: 'Every gloss checked against BDB on Sefaria; found the H9 affix bug and about 40 glosses that missed Ruth’s sense. Most fixes trace to this report.', date: '2026-10-22' },
+    { title: 'Content review A (cited sources)', href: 'docs/review/content-A.md', blurb: 'Re-derived every join, count and parse independently of the pipeline.', date: '2026-10-22' },
+    { title: 'Code review', href: 'docs/review/code-1.md', blurb: 'Fresh-agent review of the code; found the 4:6 maqqef and stale-session bugs.', date: '2026-10-22' },
     { title: 'Design as built', href: 'docs/agents/DESIGN.md', blurb: 'What the first slice does and where each piece of data comes from.', date: '2026-10-22' },
     { title: 'Review packet: every Ruth word', href: 'docs/review/ruth-lexemes.md', blurb: 'All 285 words, 30 names and 13 written/read places with gloss, BDB citation and first occurrence. Generated from the built data.', date: '2026-10-22' },
     { title: 'Notes on lomed', href: 'reference/lomed/README.md', blurb: 'What was taken from the earlier lomed project (resources only) and the bugs found in its parser.', date: '2026-10-22' },

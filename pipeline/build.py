@@ -149,7 +149,9 @@ def build(book: str) -> dict:
         if main["m"].startswith("V") and len(main["m"]) > 2 and main["m"][2] in "crs":
             for s in t["segs"]:
                 if s["r"] == "suf" and s["x"] in OBJ_TO_POSS:
-                    s["gl"] = f"{lexemes[OBJ_TO_POSS[s['x']]]['gloss']} / {lexemes[s['x']]['gloss']}"
+                    poss, obj = lexemes[OBJ_TO_POSS[s["x"]]]["gloss"], lexemes[s["x"]]["gloss"]
+                    if poss != obj:
+                        s["gl"] = f"{poss} / {obj}"
 
     # Occurrences, counts and first appearance. Every token is listed; the count is per place:
     # a written/read pair of the same word counts once, and so does a two-word name.

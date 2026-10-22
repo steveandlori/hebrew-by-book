@@ -70,3 +70,26 @@ Bethlehem place (correct), Moab place (correct; land of Moab), Moabite people (c
 ## Verdict
 
 The pipeline's joins are, apart from one logic bug, sound: all 1306 tokens, 345 lexeme counts, 30 name keys, every BDB definition/page and all prefix/suffix row mappings reproduce exactly from the pinned source files, the morphology decoding of 519 tokens matches an independent decoder built from the OSHB table page, and the 13 ketiv/qere places (count, pairing, tags) are right and presented without taking a side. Three things must be fixed before the app goes to Steve: the `startswith("H9")` bug that silently removes בּוֹא (n=18), בָּחוּר and בַּיִן from the vocabulary (C1); the "Ephraimite" gloss where Ruth 1:2 and the BDB def say Ephrathite (C2); and the Names tab calling Ephrathah (4:11) a person (C3). A second tier is gloss fidelity: the "general: specific" shortening and TBESH's single-row entries give Ruth-wrong glosses for נחם, פקד, גדל, מרר (S1-S4), and the suffix glosses on infinitives and participles pick object forms regardless of role (S7). `pipeline/overrides/ruth.json` does not exist yet and is the natural home for most of these fixes; a build-time check that compares the chosen TBESH gloss with the Lexical Index definition would have caught C2 and S3.
+
+## Confirmation pass
+
+Rebuilt data (commit 9f3fa4d). Scripts re-run independently of `pipeline/` against the new `data/ruth.js` (343 lexemes, 286 vocabulary: 285 + 3 from C1 - 2 merges). Note: I also ran `python pipeline/build.py Ruth` to read the S9 warning list; it rewrites `data/ruth.js`, but I compared before and after and the data is byte-identical in content (no change; working tree clean).
+
+| id | status | evidence |
+|---|---|---|
+| C1 | RESOLVED, VERIFIED | H935 (n=18, BDB p. 97, def "come in"), H970 (p. 104), H996 (p. 107) are no longer affixes and have BDB data. |
+| C2 | RESOLVED | H673 gloss "Ephrathite" with glossNote showing TBESH's "Ephraimite" and the reason. |
+| C3 | RESOLVED | H672 `kind:"place"`; app uses `l.kind || NAME_KIND(tm)` (app.js:55). H3063 "place, person", H3478 "people", H3068/H7706 "divine name" all present (S5, S6, M3). |
+| S1-S4 | RESOLVED | H5162 "to comfort; be sorry", H6485a "to visit, attend to", H1431 "to grow up, become great", H4843 "to be bitter", each with glossNote (was/why/source). |
+| S8 | RESOLVED, VERIFIED | Counts below. |
+| S9 | RESOLVED as designed | Build prints 16 warnings (no head row of the right kind): H673, H4125, H834d, H430, H834b, H4755, H7706, H2428, H227b, H834c, H595, H859c, H3588b, H518b, H8009, H8012. Matches the set I found by hand; H673/H834d/H227b/H8009/H7706/H430/H834c/H2428 are covered by overrides, the rest I judge harmless (checked earlier). |
+| S10 | NOT APPLIED; partly verifiable | Still "that if" (H3588b) and "if" (H518b, BDB def "that if"). BDB's own entry (k.bg.ab, p. 474) distinguishes: the particles "each retaining independent force" in different clauses = "that if / for if"; "closely conjoined, relating to the same clause, limiting the preceding clause" = "except"; "but rather, but". Ruth 3:18 (`לֹא יִשְׁקֹט הָאִישׁ כִּי אִם־כִּלָּה`) reads as the conjoined sense (he will not rest except he finish), so "except" fits, but the BDB XML cites no Ruth verse in that entry, so the assignment of 3:18 to that sub-sense is my reading, not source-cited. Status: QUESTIONABLE, leave or override to "except" at Steve's discretion. |
+| S7 | NOT APPLIED (not mentioned as fixed) | Suffix rows unchanged: 2:7 שִׁבְתָּהּ still H9034 "her", 3:4 בְשָׁכְבוֹ H9033 "him", 2:20 מִגֹּאֲלֵנוּ H9035 "us". Still SHOULD-FIX / QUESTIONABLE as in the first pass. |
+
+(2) Counts: I recomputed every lexeme's n from Ruth.xml under the stated rule (a ketiv and its qere of the same word count once; the seven tokens with lemma ending `+` (ids 08aPd, 08qCU, 0863G, 08DDb, 08gtq, 08Ygn, 08b2J, all "בית" of Bethlehem) are skipped; merged keys summed). 0 differences across all lexemes, no extra keys. Checks: H1980 n=18 (15 + 3 from H3212), H2962 n=1, H8071 n=1, H1035 n=7 (14 tokens in `occ`, n counts the name once), H3045 and the other former double counts now once per place. The cmp flag is present on exactly those seven tokens.
+
+(3) Merges: `H3212` and `H2958` are absent from `lexemes`; 0 tokens have a `lex` not in `lexemes`; 0 segment `x` keys dangling (all 1306 tokens checked).
+
+(4) Overrides: every non-underscore entry in `pipeline/overrides/ruth.json` was checked against the data: all gloss/def/kind values applied, every gloss override has a glossNote, both mergeInto sources are gone with targets present, and no override names a lexeme absent from Ruth (0 problems). `_kq_notes` reached the data (note fields on the two 3:3 / 3:4 `ירדתי`/`שכבתי` places, displayed by app.js:503) and the `_token_glosses` entry reached token 08ygU as `gl`.
+
+Remaining open: S7 (suffix role on infinitives/participles) and S10 (see above); M-level items not re-checked except M1 (H1870 "way, road") and M3 (resolved).
