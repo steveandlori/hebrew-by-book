@@ -218,3 +218,74 @@ def test_kq_differences_are_neutral(data):
 
 def test_kq_differences_unit():
     assert kq_differences(None, [{}]) == ["read, not written"]
+
+
+# ── English renderings (Steve, 2026-10-22: "a simple translation such as 'and she walked/went'") ──
+
+def _en(data, ref):
+    v = next(v for v in data["verses"] if v["ref"] == ref)
+    return [t["en"] for t in v["t"]]
+
+
+def test_rendering_simple_past_with_both_senses(data):
+    assert "and she went / walked" in _en(data, "2.3")
+
+
+def test_rendering_keeps_written_and_read_apart_at_3_3(data):
+    en = _en(data, "3.3")
+    assert "and I will go down" in en and "and you (f) will go down" in en
+
+
+def test_rendering_follows_number_at_3_14(data):
+    en = _en(data, "3.14")
+    assert "his place of the foot" in en and "his place of the feet" in en
+
+
+def test_rendering_keeps_2nd_person_gender(data):
+    assert "with you (pl)" in _en(data, "1.8")        # masculine plural to two women: shown as written
+    assert "return! (f pl)" in _en(data, "1.8")
+
+
+def test_rendering_uses_stem_sense(data):
+    assert "he made bitter" in _en(data, "1.20")       # Hiphil, not the Qal 'was bitter' of 1:13
+    assert "he brought me back" in _en(data, "1.21")
+    assert "he fathered" in _en(data, "4.18")
+
+
+def test_rendering_ל_infinitive_and_participle_noun(data):
+    assert "to sojourn" in _en(data, "1.1")
+    assert "from our redeemer" in _en(data, "2.20")
+    assert "who returned" in _en(data, "1.22")         # article on a finite verb
+
+
+def test_every_token_has_a_rendering(data):
+    for v in data["verses"]:
+        for t in v["t"]:
+            assert t.get("en"), (v["ref"], t["id"])
+
+
+def test_lookalikes(data):
+    L = data["lexemes"]
+    assert "H408" in L["H413"]["alike"] and "H413" in L["H408"]["alike"]   # אֶל / אַל, same letters
+    assert "אֵל" in L["H413"]["note"]["text"]                                 # God, not in Ruth
+
+
+def test_english_units():
+    from english import pluralize, senses, verb_forms
+    assert pluralize("daughter-in-law") == "daughters-in-law"
+    assert pluralize("young man") == "young men"
+    assert pluralize("barley") == "barley"
+    assert senses("to go, walk") == ["go", "walk"]
+    assert senses("to(wards)") == ["to"]
+    assert senses("to support; (ptc.) nurse", participle=True) == ["nurse"]
+    assert verb_forms("lie")["ing"] == "lying" and verb_forms("dip")["past"] == "dipped"
+
+
+def test_renderings_review_fixes(data):
+    # docs/review/renderings-1.md: plural of a gloss ending in s, gentilic plurals, Niphal participle, כְּ + infinitive
+    assert "witnesses" in _en(data, "4.9")
+    assert "Ephrathites" in _en(data, "1.2")
+    assert "the one stationed (over)" in _en(data, "2.5")
+    assert "as their (f) coming (in)" in _en(data, "1.19")
+    assert "today" in _en(data, "4.9")
+    assert "it was bitter" in _en(data, "1.13")           # per-word override: impersonal

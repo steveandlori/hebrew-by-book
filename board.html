@@ -58,7 +58,7 @@ const BOARD = {
       { label: 'Ruth words taught', value: '286' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '97' },
+      { label: 'tests passing', value: '109' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -84,8 +84,14 @@ const BOARD = {
         { t: 'Publish: public GitHub repo + Pages', s: 'done' },
       ] },
     { id: 'm2', title: 'Deepen Ruth', status: 'active',
-      summary: 'Ideas banked, in rough priority: verb parsing drills (Steve: wanted, not top priority); ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works (vocabulary spacing, words in context) with DOI checks.',
-      tasks: [] },
+      summary: 'Steve’s first feedback (2026-10-22) comes first: plain English for each word in its verse, and notes on look-alike words. Then the banked ideas: verb parsing drills; ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works.',
+      tasks: [
+        { t: 'Plain English for every word in its verse (“and she went / walked”), short breakdown after, full parse folded away', s: 'done' },
+        { t: 'Verb senses by stem from BDB (e.g. 1:20 Hiphil “made bitter”, 4:18 “fathered”); participles used as nouns (“redeemer”)', s: 'done' },
+        { t: '“Don’t confuse” notes: same-letter words in Ruth listed automatically, plus reviewed notes (אֶל vs אֵל “God”)', s: 'done' },
+        { t: 'Independent review of all 1,306 renderings against parse and BDB', s: 'doing' },
+        { t: 'Fix confirmed findings, then publish', s: 'todo' },
+      ] },
     { id: 'm3', title: 'More books', status: 'later',
       summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
       tasks: [] },
@@ -97,6 +103,8 @@ const BOARD = {
       advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
+    { id: 't4', date: '2026-10-22', title: 'Tap a word: English first now',
+      steps: 'Read → any verse → tap a word. The pop-up leads with plain English for that form (“and she went / walked”, “and you (f) will go down”), then one short line of parts, with the full parse under “Full parse”. Look up אֶל in Words: it now has a “Don’t confuse” box. Tell me if the English ever reads as taking a side, or if the breakdown is still too much.' },
     { id: 't1', date: '2026-10-22', title: 'Try a Today session (once the site is live)',
       steps: 'Open the live site on your phone. The first visit shows How it works; then Today offers 10 new words as 20 cards. Try a hint, the writing pad, and the three grading buttons.' },
     { id: 't2', date: '2026-10-22', title: 'Read Ruth 3:3–4 and tap the bracketed forms',
@@ -106,6 +114,7 @@ const BOARD = {
   ],
   docs: [
     { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
+    { title: 'Review packet: every word’s English', href: 'docs/review/ruth-renderings.md', blurb: 'All 1,306 words of Ruth with form, parse, gloss and the generated English, verse by verse.', date: '2026-10-22' },
     { title: 'QA report', href: 'docs/review/qa-1.md', blurb: 'Written-plan QA: 13 scenarios including a 7-day simulation with a faked clock. Verdict SHIP.', date: '2026-10-22' },
     { title: 'Content review B (independent sources)', href: 'docs/review/content-B.md', blurb: 'Every gloss checked against BDB on Sefaria; found the H9 affix bug and about 40 glosses that missed Ruth’s sense. Most fixes trace to this report.', date: '2026-10-22' },
     { title: 'Content review A (cited sources)', href: 'docs/review/content-A.md', blurb: 'Re-derived every join, count and parse independently of the pipeline.', date: '2026-10-22' },

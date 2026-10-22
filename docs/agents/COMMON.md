@@ -16,5 +16,6 @@
 - **Values that bind the content (Steve's words):** the ketiv and qere are both important; "some qere may be
   legitimate corrections; others will be misinterpretations." The app must not take a side: never call a ketiv an
   error or a qere the correction. "Translations can domesticate the text when they don't understand it," so the app
-  shows no verse translations, only word glosses from each reading's own dictionary entry.
+  shows no verse translations, only word glosses from each reading's own dictionary entry and a literal English
+  rendering of each word form (Steve asked for these on 2026-10-22: "and she walked/went").
 - Nothing inherited counts as verified. Do not trust counts or claims in this brief; check them.

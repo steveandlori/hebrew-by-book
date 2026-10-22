@@ -9,6 +9,7 @@ import json
 import sys
 from pathlib import Path
 
+from english import render
 from hebrew import consonantal, pointed
 from lexicon import aug_of, general_gloss, load_bdb_pages, load_lexical_index, load_tbesh, pick_tbesh, tbesh_key
 from oshb import parse_book
@@ -62,7 +63,11 @@ def is_affix(key: str) -> bool:
 
 def load_overrides(book: str) -> dict:
     """pipeline/overrides/<book>.json: per-lexeme {gloss|def|kind|mergeInto, why, source}, plus
-    _kq_notes {"<ref>:<key>": note} and _token_glosses {"<token id>": {gloss, why, source}}."""
+    _kq_notes {"<ref>:<key>": note}, _token_glosses {"<token id>": {gloss, why, source}},
+    _stems {"<key>": {"<stem code>": gloss, why, source}} (a verb's sense in a stem other than Qal),
+    _number_glosses {"<key>": {s, p, why, source}} (singular and plural renderings),
+    _participles {"<key>": {s, p, why, source}} (a verb whose participle is used as a noun),
+    _renderings {"<token id>": {en, why, source}} and _notes {"<key>": {note, why, source}} (look-alikes)."""
     path = ROOT / "pipeline" / "overrides" / f"{book.lower()}.json"
     ov = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     for k, o in ov.items():
@@ -83,6 +88,14 @@ def build(book: str) -> dict:
     overrides = load_overrides(book)
     kq_notes = overrides.pop("_kq_notes", {})
     token_glosses = overrides.pop("_token_glosses", {})
+    sections = {name: {k: o for k, o in overrides.pop(name, {}).items() if not k.startswith("_")}
+                for name in ("_stems", "_number_glosses", "_participles", "_renderings", "_notes")}
+    for name, entries in sections.items():
+        for k, o in entries.items():
+            if not o.get("why") or not o.get("source"):
+                raise SystemExit(f"{name} {k} needs why and source")
+    stems, number_glosses = sections["_stems"], sections["_number_glosses"]
+    stem_glosses = {k: {c: g for c, g in o.items() if c not in ("why", "source")} for k, o in stems.items()}
     overrides = {k: o for k, o in overrides.items() if not k.startswith("_")}
 
     tokens = [t for v in parsed["verses"] for t in v["tokens"]]
@@ -173,6 +186,41 @@ def build(book: str) -> dict:
         else:
             by_id[tid]["gl"] = {"gloss": o["gloss"], "why": o["why"], "source": o["source"]}
 
+    # English for each word in its verse, then the per-token corrections.
+    for t in tokens:
+        t["en"] = render(t, lexemes, stem_glosses, number_glosses, sections["_participles"])
+    for tid, o in sections["_renderings"].items():
+        if tid not in by_id or not o.get("en"):
+            errors.append(f"_renderings {tid}: unknown token or missing en")
+        else:
+            by_id[tid]["en"] = o["en"]
+            by_id[tid]["enNote"] = {"why": o["why"], "source": o["source"]}
+    for k in list(stems) + list(number_glosses) + list(sections["_participles"]):
+        if k not in lexemes:
+            errors.append(f"_stems/_number_glosses/_participles for unknown key {k}")
+    for k, o in stems.items():
+        used = {s["m"][1] for t in tokens for s in t["segs"] if s["x"] == k and s["m"].startswith("V")}
+        if set(stem_glosses[k]) - used:
+            errors.append(f"_stems {k}: stems {sorted(set(stem_glosses[k]) - used)} do not occur")
+        if k in lexemes:
+            lexemes[k]["stems"] = stem_glosses[k]
+
+    # Look-alikes: other words in the book with the same consonants, plus reviewed notes on words outside it.
+    by_cons: dict[str, list[str]] = {}
+    for k, rec in lexemes.items():
+        if not rec.get("affix"):
+            by_cons.setdefault(rec["cons"], []).append(k)
+    for k, rec in lexemes.items():
+        if not rec.get("affix"):
+            same = [x for x in by_cons[rec["cons"]] if x != k]
+            if same:
+                rec["alike"] = same
+    for k, o in sections["_notes"].items():
+        if k not in lexemes or not o.get("note"):
+            errors.append(f"_notes {k}: unknown key or missing note")
+        else:
+            lexemes[k]["note"] = {"text": o["note"], "source": o["source"]}
+
     kq = []
     used_notes = set()
     for e in parsed["kq"]:
@@ -198,7 +246,7 @@ def build(book: str) -> dict:
         for t in v["tokens"]:
             out = {"id": t["id"], "p": t["p"], "c": t["c"], "lex": t["lex"], "parse": t["parse"],
                    "segs": [{k: s[k] for k in ("t", "x", "m", "g", "r", "gl") if k in s} for s in t["segs"]]}
-            for opt in ("j", "kq", "pair", "cmp", "gl"):
+            for opt in ("j", "kq", "pair", "cmp", "gl", "en", "enNote"):
                 if opt in t:
                     out[opt] = t[opt]
             toks.append(out)

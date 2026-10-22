@@ -14,6 +14,17 @@ export function affixGloss(gloss) {
   return /[?.]/.test(inner) ? '' : inner;
 }
 
+// A parse label in its shortest readable form: "Qal perfect (qatal), 3fs" -> "Qal qatal 3fs",
+// "noun, fp, construct" -> "fp construct", "pronominal suffix, 3ms" -> "3ms".
+export function shortParse(label) {
+  return String(label || '')
+    .replace(/sequential perfect \(weqatal\)/, 'weqatal').replace(/perfect \(qatal\)/, 'qatal')
+    .replace(/imperfect \(yiqtol\)/, 'yiqtol').replace(/participle active/, 'participle')
+    .replace(/infinitive construct/, 'inf. construct').replace(/infinitive absolute/, 'inf. absolute')
+    .replace(/^(noun|pronominal suffix|adjective|personal pronoun),? ?/, '').replace(/,? absolute$/, '')
+    .replace(/,/g, '').replace(/\s+/g, ' ').trim();
+}
+
 // deps: { lexemes: Map, isPointed: () => bool, stageOf: lexId => stage }
 export function makeRenderer({ lexemes, isPointed, stageOf }) {
   const tokText = t => isPointed() ? t.p : t.c;
@@ -85,5 +96,28 @@ export function makeRenderer({ lexemes, isPointed, stageOf }) {
     }).join('')}</ul>`;
   }
 
-  return { esc, heb, tokText, lemmaText, tokHTML, kqHTML, verseHTML, segmentsHTML };
+  // One word in its verse: the English first ("and she went / walked"), then a one-line breakdown
+  // (prefixes as English words, the main word's short parse, suffixes as person-gender-number),
+  // and the full parse folded away.
+  function formHTML(t) {
+    const brief = t.segs.map(s => {
+      const l = lexemes.get(s.x);
+      const label = s.r === 'main' ? shortParse(s.g) : s.r === 'pre' ? affixGloss(l && l.gloss) || shortParse(s.g) : shortParse(s.g);
+      return `<span class="bseg">${heb(isPointed() ? s.t : plain(s.t))} <span>${esc(label)}</span></span>`;
+    }).join('<span class="bsep">+</span>');
+    return `<div class="form"><p class="formline">${heb(tokText(t), 'mid')} <b class="en"${t.enNote ? ` title="${esc(t.enNote.why)} (${esc(t.enNote.source)})"` : ''}>${esc(t.en || '')}</b></p>
+      <p class="brief">${brief}</p>
+      <details class="fullparse"><summary>Full parse</summary><p class="small">${esc(t.parse)}</p>${segmentsHTML(t)}</details></div>`;
+  }
+
+  // Words easily confused with this one: same consonants elsewhere in the book, and a reviewed note.
+  function lookalikeHTML(l) {
+    const same = (l.alike || []).map(id => lexemes.get(id)).filter(Boolean);
+    if (!same.length && !l.note) return '';
+    const list = same.map(x => `${heb(lemmaText(x))} <span class="muted">${esc(x.gloss)}</span>`).join(', ');
+    return `<div class="alike"><b>Don't confuse</b>${same.length ? ` <span class="small">Same letters: ${list}</span>` : ''}
+      ${l.note ? `<p class="small">${esc(l.note.text)} <span class="muted">(${esc(l.note.source)})</span></p>` : ''}</div>`;
+  }
+
+  return { esc, heb, tokText, lemmaText, tokHTML, kqHTML, verseHTML, segmentsHTML, formHTML, lookalikeHTML };
 }

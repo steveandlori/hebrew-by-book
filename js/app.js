@@ -4,7 +4,7 @@ import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievabil
 import { STAGES, STAGE_LABEL, PHASE_LABEL, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
-import { makeRenderer, esc } from './render.js';
+import { makeRenderer, esc, shortParse } from './render.js';
 import { methodHTML } from './method.js';
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -53,7 +53,6 @@ const POS_LABEL = {
 const posLabel = p => POS_LABEL[p] || p || '';
 const NAME_KIND = tm => /-P$/.test(tm) ? 'person' : /LG$|PG$/.test(tm) ? 'people' : /L$/.test(tm) ? 'place' : 'title';
 const nameKind = l => l.kind || NAME_KIND(l.tm);
-const glossOfToken = t => (t.gl ? t.gl.gloss : (BOOK.lexemes.get(t.lex) || {}).gloss || '');
 // A key to the parse abbreviations (standard grammar terms; the parses themselves are OSHB's tagging).
 const PARSE_KEY = `<details class="abbr"><summary>Reading the parses</summary><ul class="small">
   <li><b>3ms</b>: person (1, 2, 3), gender (m masculine, f feminine, c common to both, b a noun used as either), number (s singular, p plural, d dual).</li>
@@ -116,7 +115,7 @@ function stageOfLex(id) {
 /* ───────────────────────── Hebrew rendering ───────────────────────── */
 
 const pointed = () => state.settings.pointing !== 'unpointed';
-const { heb, tokText, lemmaText, verseHTML, segmentsHTML } = makeRenderer({ lexemes: BOOK.lexemes, isPointed: pointed, stageOf: id => stageOfLex(id) });
+const { heb, tokText, lemmaText, verseHTML, formHTML, lookalikeHTML } = makeRenderer({ lexemes: BOOK.lexemes, isPointed: pointed, stageOf: id => stageOfLex(id) });
 
 function bdbCite(l) {
   if (!l || !l.bdb) return '';
@@ -176,14 +175,14 @@ function backHTML(card) {
   const w = card.item;
   switch (card.kind) {
     case 'recall':
-      return `${wordSummaryHTML(w)}${glossNote(w)}<h3>Its forms in ${esc(BOOK_NAME)}</h3>${formsListHTML(w, 6)}${sourceLine()}`;
+      return `${wordSummaryHTML(w)}${lookalikeHTML(w)}${glossNote(w)}<h3>Its forms in ${esc(BOOK_NAME)}</h3>${formsListHTML(w, 6)}${sourceLine()}`;
     case 'ctx':
     case 'form':
     case 'which': {
       const t = BOOK.tokens.get(card.token);
       const v = verseOfToken(card.token);
-      return `<h3>This form</h3><p class="formline">${heb(tokText(t), 'mid')} <span>${esc(t.parse)}</span></p>${segmentsHTML(t)}
-        <h3>Dictionary word</h3>${wordSummaryHTML(w)}${glossNote(w)}
+      return `<h3>This form</h3>${formHTML(t)}
+        <h3>Dictionary word</h3>${wordSummaryHTML(w)}${lookalikeHTML(w)}${glossNote(w)}
         <p class="links">${esc(refLabel(v.ref))}: <a href="#read/${v.ref}">read it in context</a><span class="sep"> · </span>${verseLinks(v.ref)}</p>${sourceLine()}`;
     }
   }
@@ -498,7 +497,7 @@ function kqNote(t) {
   if (!place) return '';
   const k = place.k ? BOOK.tokens.get(place.k) : null;
   const qs = place.q.map(id => BOOK.tokens.get(id));
-  const row = (label, x) => x ? `<li><span class="lbl">${label}</span>${heb(label === 'Written' ? x.c : x.p, 'mid')} <span>${esc(x.parse)}</span> <span class="muted">${esc(glossOfToken(x))}</span></li>` : `<li><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written' ? 'written' : 'read'} here</span></li>`;
+  const row = (label, x) => x ? `<li><span class="lbl">${label}</span>${heb(label === 'Written' ? x.c : x.p, 'mid')} <b class="en">${esc(x.en)}</b> <span class="muted">${esc(shortParse(x.parse))}</span></li>` : `<li><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written' ? 'written' : 'read'} here</span></li>`;
   return `<div class="kqbox"><b>Written and read differ here</b> <span class="muted">(${esc(place.diff.join(', '))})</span>
     <ul>${row('Written', k)}${qs.length ? qs.map(q => row('Read', q)).join('') : row('Read', null)}</ul>${place.note ? `<p class="small">${esc(place.note)}</p>` : ''}</div>`;
 }
@@ -511,12 +510,11 @@ function openSheet(id) {
   const v = BOOK.verseOf.get(id);
   const stage = stageOfLex(t.lex);
   sheet.innerHTML = `<div class="sheet-in"><button class="btn btn-small sheet-x" aria-label="Close">Close</button>
-    <p class="formline">${heb(tokText(t), 'mid')} <span>${esc(t.parse)}</span></p>
-    ${segmentsHTML(t)}
+    ${formHTML(t)}
     ${t.gl ? `<p class="small">In this verse: <b>${esc(t.gl.gloss)}</b> <span class="muted">(${esc(t.gl.source)})</span></p>` : ''}
     ${kqNote(t)}
     <h3>Dictionary word ${stage !== 'known' ? `<span class="chip chip-stage-${stage}">${STAGE_LABEL[stage]}</span>` : ''}</h3>
-    ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(nameKind(l))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
+    ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(nameKind(l))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}${lookalikeHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
     <p class="links">${esc(refLabel(v.ref))}: ${verseLinks(v.ref)}</p></div>`;
   sheet.hidden = false;
   document.body.classList.add('sheet-open');
@@ -533,7 +531,7 @@ function renderKq() {
     const qs = e.q.map(id => BOOK.tokens.get(id));
     const hl = (k || qs[0]).id;
     const reading = (label, x, text) => x
-      ? `<div class="reading"><span class="lbl">${label}</span>${heb(text, 'mid')}<span>${esc(x.parse)}</span><span class="muted">${esc(glossOfToken(x))} · ${bdbCite(BOOK.lexemes.get(x.lex))}</span></div>`
+      ? `<div class="reading"><span class="lbl">${label}</span>${heb(text, 'mid')}<b class="en">${esc(x.en)}</b><span class="muted">${esc(x.parse)} · ${bdbCite(BOOK.lexemes.get(x.lex))}</span></div>`
       : `<div class="reading"><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written (ketiv)' ? 'written' : 'read'} here</span></div>`;
     return `<li class="panel kqitem"><div class="row"><b>${esc(refLabel(e.ref))}</b><span class="spacer"></span><span class="chip chip-kq">${esc(e.diff.join(', '))}</span></div>
       ${verseHTML(v, { highlight: hl })}
@@ -570,7 +568,7 @@ function renderWords(param) {
     return `<ul class="flist words">${items.map(l => {
       const s = st.get(l.id) || 'new';
       return `<li id="w-${l.id}"><details${param === l.id ? ' open' : ''}><summary><span class="wrow">${heb(lemmaText(l), 'mid')}<span class="wg"><b>${esc(l.gloss)}</b> <span class="muted">${esc(posLabel(l.pos))} · ${l.n}×</span></span><span class="chip chip-stage-${s}">${STAGE_LABEL[s]}</span></span></summary>
-        <div class="wbody"><p class="small">${bdbCite(l)}${l.tr ? ` · ${esc(l.tr)}` : ''} · first in ${esc(l.first.replace('.', ':'))}</p>${glossNote(l)}${formsListHTML(l, 50)}</div></details></li>`;
+        <div class="wbody"><p class="small">${bdbCite(l)}${l.tr ? ` · ${esc(l.tr)}` : ''} · first in ${esc(l.first.replace('.', ':'))}</p>${lookalikeHTML(l)}${glossNote(l)}${formsListHTML(l, 50)}</div></details></li>`;
     }).join('')}</ul>`;
   };
   view.innerHTML = `<h1>Words in ${esc(BOOK_NAME)}</h1><p class="lead">All ${BOOK.vocab.length} words the cards teach, in the order they are introduced. Names have <a href="#names">their own list</a>; prefixes and suffixes are explained when you tap a word in Read.</p>

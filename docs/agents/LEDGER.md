@@ -14,3 +14,12 @@ Not applied on purpose (logged in STATUS.md): B-G30 (כִּי אִם sense unver
 B-K3 (3:14 qere holam kept as in source).
 
 Next: fix QA findings → publish (repo + Pages) → update board, STATUS → register board with Steve's project browser.
+
+## Steve's first feedback (2026-10-22, evening)
+
+| Date | Step | Who | State |
+| --- | --- | --- | --- |
+| 2026-10-22 | English per word (pipeline/english.py) + look-alikes; sheet/card layout: English, brief line, Full parse folded | coordinator | done, tests 48 py / 61 js |
+| 2026-10-22 | Renderings review | general-purpose | brief docs/agents/brief-renderings.md → docs/review/renderings-1.md (running) |
+
+Next: apply confirmed findings → rebuild → tests → commit + push → check live.

@@ -464,6 +464,16 @@ button.w:hover { background: var(--pen-soft); }
 .gloss-big { font-size: 24px; font-weight: 700; margin: 8px 0; }
 .formline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
 .formline > span:last-child { color: var(--ink-2); font-size: 15px; }
+.formline .en { font-size: 19px; color: var(--ink); }
+.brief { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+.brief .heb { font-size: calc(17px * var(--heb-scale)); color: var(--ink); }
+.bseg { white-space: nowrap; }
+.bsep { color: var(--ink-3); }
+.fullparse { margin-top: 6px; font-size: 14px; }
+.fullparse summary { cursor: pointer; color: var(--pen); font-size: 13px; }
+.alike { margin-top: 8px; padding: 8px 12px; border-inline-start: 3px solid var(--pen); background: var(--pen-soft); border-radius: 0 8px 8px 0; font-size: 14px; }
+.alike p { margin: 4px 0 0; }
+.reading .en, .kqbox .en { color: var(--ink); }
 .segs, .forms { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
 .segs li, .forms li { display: grid; grid-template-columns: minmax(3.2em, auto) 1fr auto; gap: 10px; align-items: baseline; font-size: 14px; color: var(--ink-2); padding: 2px 0; border-top: 1px solid var(--line); }
 .segs li:first-child, .forms li:first-child { border-top: 0; }

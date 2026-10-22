@@ -53,6 +53,16 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     spelling (GKC §44h); the read ending ־תְּ is 2fs. OSHB's parse of the written form (1cs) is still shown, attributed.
 15. **Order of a day**: all of the day's new words first, then each in its verse (as in josie-stats).
 
+16. **English for each word in its verse** (Steve, 2026-10-22: "default to a simple translation such as 'and she
+    walked/went' ... a really abbreviated breakdown could follow"). Built by `pipeline/english.py` from the OSHB parse and
+    the gloss: wayyiqtol/qatal as past, yiqtol/weqatal as "will"; 2nd person keeps gender and number ("you (f pl)"), so
+    1:8's masculine "with you (pl)" shows as written; up to two senses ("went / walked"); literal word order. Each
+    written/read form gets its own English (3:3 "and I will go down" / "and you (f) will go down"). Verb senses in other
+    stems, participles used as nouns and per-word fixes are overrides with reasons and BDB pages. Still no verse
+    translations.
+17. **Look-alikes**: words with the same consonants elsewhere in the book are listed automatically under "Don't
+    confuse"; words outside the book (אֵל "God" for אֶל) need a reviewed note.
+
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 
 Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,

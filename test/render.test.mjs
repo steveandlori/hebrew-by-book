@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ruth from '../data/ruth.js';
 import { indexBook } from '../js/deck.js';
-import { makeRenderer, affixGloss, esc } from '../js/render.js';
+import { makeRenderer, affixGloss, esc, shortParse } from '../js/render.js';
 import { allowances } from '../js/guide.js';
 
 const book = indexBook(ruth);
@@ -74,4 +74,24 @@ test('allowances count new words by recall cards and extra cards by form/which',
   const ids = ['H1:recall', 'H1:ctx', 'H2:recall', 'H3:form:08abc', 'H4:which'];
   assert.deepEqual(allowances(ids, 10), { words: 8, extra: 8 });
   assert.deepEqual(allowances(Array.from({ length: 12 }, (_, i) => `H${i}:recall`), 10), { words: 0, extra: 10 });
+});
+
+test('a word in its verse: English first, a one-line breakdown, the full parse folded away', () => {
+  pointedMode = true;
+  const t = book.verses.get('2.3').t[0];
+  const h = R.formHTML(t);
+  assert.ok(h.indexOf('class="en"') < h.indexOf('class="brief"') && h.indexOf('class="brief"') < h.indexOf('Full parse'));
+  assert.ok(h.includes('and she went / walked'));
+  assert.ok(h.includes('Qal wayyiqtol 3fs'));
+});
+test('shortParse keeps only what a reader needs', () => {
+  assert.equal(shortParse('Qal perfect (qatal), 3fs'), 'Qal qatal 3fs');
+  assert.equal(shortParse('noun, fp, construct'), 'fp construct');
+  assert.equal(shortParse('pronominal suffix, 3ms'), '3ms');
+  assert.equal(shortParse('Qal participle active, mp absolute'), 'Qal participle mp');
+});
+test('אֶל lists אַל as a look-alike and carries the note about אֵל', () => {
+  const h = R.lookalikeHTML(book.lexemes.get('H413'));
+  assert.ok(h.includes('אַל') && h.includes('אֵל'));
+  assert.equal(R.lookalikeHTML(book.lexemes.get('H1323')), '');
 });
