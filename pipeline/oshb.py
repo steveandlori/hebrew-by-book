@@ -96,6 +96,8 @@ def parse_word(w: ET.Element, ref: str) -> dict:
         "segs": segs,
         "lex": segs[main_idx]["x"],
         "parse": " + ".join(s["g"] for s in segs),
+        # '+' on the lemma joins this word to the next as one name (בֵּית + לֶחֶם = Bethlehem)
+        **({"cmp": 1} if lemmas[main_idx].strip().endswith("+") else {}),
     }
 
 

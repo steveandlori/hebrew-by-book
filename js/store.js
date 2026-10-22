@@ -41,7 +41,8 @@ export function loadState() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
   let s = {};
-  if (raw) { try { s = JSON.parse(raw); } catch (e) { s = {}; } }
+  if (raw) { try { s = JSON.parse(raw) || {}; } catch (e) { s = {}; } }
+  if (typeof s !== 'object') s = {};
   return shape(s);
 }
 

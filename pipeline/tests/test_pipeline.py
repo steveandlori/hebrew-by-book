@@ -149,8 +149,58 @@ def test_every_lexeme_has_gloss_and_bdb(data):
 def test_names_from_oshb(data):
     names = {r["gloss"] for r in data["lexemes"].values() if r.get("name")}
     assert {"Ruth", "Naomi", "Boaz", "Moab", "Bethlehem"} <= names
-    assert data["lexemes"]["H2428"]["gloss"] == "strength"   # not the 'Helech' name row
+    assert data["lexemes"]["H2428"]["tg"].startswith("strength")   # not the 'Helech' name row
     assert not data["lexemes"]["H2428"].get("name")
+
+
+# ── regressions from the 2026-10-22 reviews (docs/review/content-A.md, content-B.md, code-1.md) ──
+
+def test_strongs_numbers_starting_with_9_are_words_not_affixes(data):
+    """H935 בּוֹא, H970 בָּחוּר and H996 בֵּין were mistaken for H9000+ affix rows."""
+    for k in ("H935", "H970", "H996"):
+        r = data["lexemes"][k]
+        assert not r.get("affix") and r["bdb"]["page"] > 0, k
+    assert data["lexemes"]["H9002"].get("affix")
+
+
+def test_counts_are_per_place(data):
+    L = data["lexemes"]
+    assert L["H1035"]["n"] == 7          # Bethlehem: two words, counted once
+    assert L["H8071"]["n"] == 1          # mantle: written + read in one place
+    assert len(L["H8071"]["occ"]) == 2   # but both tokens are still listed
+
+
+def test_merges_follow_bdb(data):
+    L = data["lexemes"]
+    assert "H3212" not in L and "H2958" not in L
+    assert L["H1980"]["n"] == 18
+    by_ref = {(e["ref"], tuple(e["diff"])) for e in data["kq"]}
+    assert ("3.14", ("spelling",)) in by_ref   # בטרום / בְּטֶרֶם: one word in BDB
+
+
+def test_every_override_carries_its_reason(data):
+    for k, r in data["lexemes"].items():
+        if "glossNote" in r:
+            assert r["glossNote"]["why"] and r["glossNote"]["source"], k
+
+
+def test_ruth3_written_ending_note_is_neutral(data):
+    notes = {e["ref"]: e.get("note", "") for e in data["kq"] if e.get("note")}
+    assert set(notes) == {"3.3", "3.4"}
+    for n in notes.values():
+        assert "first person" in n and "second feminine" in n and "GKC" in n
+
+
+def test_suffix_on_infinitive_glossed_both_ways(data):
+    toks = [t for v in data["verses"] if v["ref"] == "3.3" for t in v["t"]]
+    sufs = [s for t in toks for s in t["segs"] if s.get("gl")]
+    assert any(s["gl"] == "his / him" for s in sufs)
+
+
+def test_name_kinds_and_glosses(data):
+    L = data["lexemes"]
+    assert L["H673"]["gloss"] == "Ephrathite"
+    assert L["H672"]["kind"] == "place"
 
 
 def test_kq_differences_are_neutral(data):

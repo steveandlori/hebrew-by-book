@@ -1,15 +1,15 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, stagesByItem, countStages, stageDiff, composeSession, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
+import { makeRenderer, esc } from './render.js';
 import { methodHTML } from './method.js';
 
 /* ───────────────────────── helpers ───────────────────────── */
 
 const $ = (sel, el = document) => el.querySelector(sel);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function shuffle(arr) {
   const out = arr.slice();
@@ -52,6 +52,15 @@ const POS_LABEL = {
 };
 const posLabel = p => POS_LABEL[p] || p || '';
 const NAME_KIND = tm => /-P$/.test(tm) ? 'person' : /LG$|PG$/.test(tm) ? 'people' : /L$/.test(tm) ? 'place' : 'title';
+const nameKind = l => l.kind || NAME_KIND(l.tm);
+const glossOfToken = t => (t.gl ? t.gl.gloss : (BOOK.lexemes.get(t.lex) || {}).gloss || '');
+// A key to the parse abbreviations (standard grammar terms; the parses themselves are OSHB's tagging).
+const PARSE_KEY = `<details class="abbr"><summary>Reading the parses</summary><ul class="small">
+  <li><b>3ms</b>: person (1, 2, 3), gender (m masculine, f feminine, c common to both, b a noun used as either), number (s singular, p plural, d dual).</li>
+  <li><b>perfect (qatal)</b>, <b>imperfect (yiqtol)</b>, <b>wayyiqtol</b> (the narrative form with וַ), <b>sequential perfect (weqatal)</b>, cohortative, jussive, imperative, infinitive, participle.</li>
+  <li><b>Qal, Niphal, Piel, Pual, Hiphil, Hophal, Hithpael</b>: the verb stems (binyanim).</li>
+  <li><b>absolute / construct</b>: a noun standing alone, or bound to the next word ("X of").</li>
+  <li><b>+</b> joins the parts of one written word: prefix + word + suffix.</li></ul></details>`;
 
 const refLabel = ref => `${BOOK_NAME} ${ref.replace('.', ':')}`;
 const verseLinks = ref => {
@@ -72,15 +81,9 @@ function cardState(id) { return hydrate(state.cards[id]); }
 function isDue(id, at = now()) { const c = cardState(id); return c && c.due <= at; }
 function isNew(id) { return !state.cards[id]; }
 
-function introducedToday() { return state.newIntroduced[store.todayKey()] || []; }
-function newWordAllowance() {
-  const used = introducedToday().filter(id => id.endsWith(':recall')).length;
-  return Math.max(0, state.settings.newPerDay - used);
-}
-function extraAllowance() {
-  const used = introducedToday().filter(id => /:(form|which)/.test(id)).length;
-  return Math.max(0, state.settings.newPerDay - used);
-}
+const todaysAllowances = () => allowances(state.newIntroduced[store.todayKey()] || [], state.settings.newPerDay);
+const newWordAllowance = () => todaysAllowances().words;
+const extraAllowance = () => todaysAllowances().extra;
 
 function dueCards(at = now()) {
   return DECK.filter(c => isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due);
@@ -113,71 +116,7 @@ function stageOfLex(id) {
 /* ───────────────────────── Hebrew rendering ───────────────────────── */
 
 const pointed = () => state.settings.pointing !== 'unpointed';
-const tokText = t => pointed() ? t.p : t.c;
-const lemmaText = l => pointed() ? l.he : (l.cons || plain(l.he));
-const heb = (text, cls = '') => `<span class="heb${cls ? ' ' + cls : ''}" lang="he" dir="rtl">${esc(text)}</span>`;
-
-function glossLine(t) {
-  const l = BOOK.lexemes.get(t.lex);
-  return l ? l.gloss : '';
-}
-
-// One word of a verse. o: { highlight, tappable, glosses, stages }
-function tokHTML(t, o, extra = '') {
-  const cls = ['w'];
-  if (o.highlight === t.id) cls.push('hl');
-  if (o.stages) cls.push('st-' + stageOfLex(t.lex));
-  if (extra) cls.push(extra);
-  const gl = o.glosses ? `<small class="gl" dir="ltr" lang="en">${esc(glossLine(t))}</small>` : '';
-  const inner = `<span class="wt">${esc(tokText(t))}${t.j ? '־' : ''}</span>${gl}`;
-  return o.tappable
-    ? `<button type="button" class="${cls.join(' ')}" data-tok="${t.id}">${inner}</button>`
-    : `<span class="${cls.join(' ')}">${inner}</span>`;
-}
-
-// Written (ketiv) and read (qere) forms, both always shown. Pointed mode leads with the read form;
-// unpointed mode leads with the written consonants. Neither is called the correct one.
-function kqHTML(k, qs, o) {
-  const leadQere = pointed();
-  const lead = leadQere ? (qs.length ? qs : [k]) : (k ? [k] : qs);
-  const other = leadQere ? (qs.length && k ? [k] : []) : (k ? qs : []);
-  const lone = !k ? 'read, not written' : !qs.length ? 'written, not read' : null;
-  const leadIsQ = lead[0] && lead[0].kq === 'q';
-  const mark = leadIsQ ? 'ק' : 'כ';
-  const title = lone ? `${lone}` : leadIsQ ? 'Read (qere); the written form (ketiv) follows' : 'Written (ketiv); the read form (qere) follows';
-  const leadHTML = lead.map(t => tokHTML(t, o, lone ? 'lone' : '')).join(' ');
-  const otherHTML = other.length ? `<span class="kq-alt"><span class="kq-tag">${leadIsQ ? 'כ' : 'ק'}</span>${other.map(t => tokHTML(t, { ...o, glosses: false }, 'alt')).join(' ')}</span>` : '';
-  return `<span class="kq${lone ? ' kq-lone' : ''}" title="${esc(title)}">${leadHTML}<sup class="kq-mark" aria-label="${esc(title)}">${mark}</sup>${otherHTML}</span>`;
-}
-
-function verseHTML(v, o = {}) {
-  const byId = new Map(v.t.map(t => [t.id, t]));
-  const done = new Set();
-  let html = '';
-  let joined = false;
-  for (const t of v.t) {
-    if (done.has(t.id)) continue;
-    let part;
-    if (t.kq) {
-      const k = t.kq === 'k' ? t : null;
-      const qs = t.kq === 'k' ? (t.pair || []).map(id => byId.get(id)).filter(Boolean) : [t];
-      [k, ...qs].filter(Boolean).forEach(x => done.add(x.id));
-      part = kqHTML(k, qs, o);
-    } else {
-      part = tokHTML(t, o);
-    }
-    html += (html && !joined ? ' ' : '') + part;
-    joined = !!t.j;
-  }
-  return `<p class="verse heb" lang="he" dir="rtl">${html}<span class="sof">׃</span></p>`;
-}
-
-function segmentsHTML(t) {
-  return `<ul class="segs">${t.segs.map(s => {
-    const l = BOOK.lexemes.get(s.x);
-    return `<li>${heb(pointed() ? s.t : plain(s.t))}<span>${esc(s.g)}</span><span class="muted">${l ? esc(l.gloss) : ''}</span></li>`;
-  }).join('')}</ul>`;
-}
+const { heb, tokText, lemmaText, verseHTML, segmentsHTML } = makeRenderer({ lexemes: BOOK.lexemes, isPointed: pointed, stageOf: id => stageOfLex(id) });
 
 function bdbCite(l) {
   if (!l || !l.bdb) return '';
@@ -276,6 +215,12 @@ function studyAhead(n = 10) {
   session.total = session.done + session.queue.length;
   if (!session.queue.length) { toast('Nothing left to study ahead. Every card is in rotation.'); return; }
   renderStudy();
+}
+
+// Forget the in-memory session (after import or Start over) so Today rebuilds from the new state.
+function resetSession() {
+  dropPad();
+  Object.assign(session, { queue: [], done: 0, total: 0, revealed: false, current: null, choices: null, picked: null, hints: 0, sketch: null, phaseOf: null, counts: null, stagesBefore: null, day: null });
 }
 
 function dropPad() {
@@ -553,9 +498,9 @@ function kqNote(t) {
   if (!place) return '';
   const k = place.k ? BOOK.tokens.get(place.k) : null;
   const qs = place.q.map(id => BOOK.tokens.get(id));
-  const row = (label, x) => x ? `<li><span class="lbl">${label}</span>${heb(label === 'Written' ? x.c : x.p, 'mid')} <span>${esc(x.parse)}</span> <span class="muted">${esc(BOOK.lexemes.get(x.lex).gloss)}</span></li>` : `<li><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written' ? 'written' : 'read'} here</span></li>`;
+  const row = (label, x) => x ? `<li><span class="lbl">${label}</span>${heb(label === 'Written' ? x.c : x.p, 'mid')} <span>${esc(x.parse)}</span> <span class="muted">${esc(glossOfToken(x))}</span></li>` : `<li><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written' ? 'written' : 'read'} here</span></li>`;
   return `<div class="kqbox"><b>Written and read differ here</b> <span class="muted">(${esc(place.diff.join(', '))})</span>
-    <ul>${row('Written', k)}${qs.length ? qs.map(q => row('Read', q)).join('') : row('Read', null)}</ul></div>`;
+    <ul>${row('Written', k)}${qs.length ? qs.map(q => row('Read', q)).join('') : row('Read', null)}</ul>${place.note ? `<p class="small">${esc(place.note)}</p>` : ''}</div>`;
 }
 
 function openSheet(id) {
@@ -568,9 +513,10 @@ function openSheet(id) {
   sheet.innerHTML = `<div class="sheet-in"><button class="btn btn-small sheet-x" aria-label="Close">Close</button>
     <p class="formline">${heb(tokText(t), 'mid')} <span>${esc(t.parse)}</span></p>
     ${segmentsHTML(t)}
+    ${t.gl ? `<p class="small">In this verse: <b>${esc(t.gl.gloss)}</b> <span class="muted">(${esc(t.gl.source)})</span></p>` : ''}
     ${kqNote(t)}
     <h3>Dictionary word ${stage !== 'known' ? `<span class="chip chip-stage-${stage}">${STAGE_LABEL[stage]}</span>` : ''}</h3>
-    ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(NAME_KIND(l.tm))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
+    ${l.name ? `<p>${heb(lemmaText(l), 'mid')} <b>${esc(l.gloss)}</b> <span class="muted">${esc(nameKind(l))}, ${l.n}×</span> · <a href="#names">Names</a></p>` : `${wordSummaryHTML(l)}<p class="links"><a href="#words/${l.id}">All its forms</a></p>`}
     <p class="links">${esc(refLabel(v.ref))}: ${verseLinks(v.ref)}</p></div>`;
   sheet.hidden = false;
   $('.sheet-x', sheet).onclick = () => { sheet.hidden = true; };
@@ -586,19 +532,21 @@ function renderKq() {
     const qs = e.q.map(id => BOOK.tokens.get(id));
     const hl = (k || qs[0]).id;
     const reading = (label, x, text) => x
-      ? `<div class="reading"><span class="lbl">${label}</span>${heb(text, 'mid')}<span>${esc(x.parse)}</span><span class="muted">${esc(BOOK.lexemes.get(x.lex).gloss)} · ${bdbCite(BOOK.lexemes.get(x.lex))}</span></div>`
+      ? `<div class="reading"><span class="lbl">${label}</span>${heb(text, 'mid')}<span>${esc(x.parse)}</span><span class="muted">${esc(glossOfToken(x))} · ${bdbCite(BOOK.lexemes.get(x.lex))}</span></div>`
       : `<div class="reading"><span class="lbl">${label}</span><span class="muted">nothing ${label === 'Written (ketiv)' ? 'written' : 'read'} here</span></div>`;
     return `<li class="panel kqitem"><div class="row"><b>${esc(refLabel(e.ref))}</b><span class="spacer"></span><span class="chip chip-kq">${esc(e.diff.join(', '))}</span></div>
       ${verseHTML(v, { highlight: hl })}
-      <details${i === 0 ? '' : ''}><summary>Work out both readings, then check</summary>
+      <details><summary>Work out both readings, then check</summary>
         ${reading('Written (ketiv)', k, k ? k.c : '')}
         ${qs.length ? qs.map(q => reading('Read (qere)', q, pointed() ? q.p : q.c)).join('') : reading('Read (qere)', null, '')}
+        ${e.note ? `<p class="small kqnote">${esc(e.note)}</p>` : ''}
         <p class="links"><a href="#read/${e.ref}">Read it in context</a><span class="sep"> · </span>${verseLinks(e.ref)}</p>
       </details></li>`;
   }).join('');
   view.innerHTML = `<h1>Written and read</h1>
     <p class="lead">In ${BOOK_DATA.kq.length} places in ${esc(BOOK_NAME)} the consonants as written (ketiv, כְּתִיב) and the text as read (qere, קְרֵי) differ. Both are kept here, each with its own parse and dictionary word. Neither is presented as the correct one; the tag says only what differs.</p>
     <p class="small muted">Parses follow the Open Scriptures Hebrew Bible's tagging, which is one reading of each form. The written forms carry no vowels in the Leningrad Codex, so their parse is an interpretation of consonants.</p>
+    ${PARSE_KEY}
     <ul class="kqlist">${items}</ul>`;
 }
 
@@ -607,6 +555,7 @@ function renderKq() {
 const wordsUi = { q: '', sort: 'order', ch: 0 };
 
 function renderWords(param) {
+  if (param) { wordsUi.q = ''; wordsUi.ch = 0; } // a deep link must not be hidden by earlier filters
   const view = $('#view');
   const st = stages();
   const list = () => {
@@ -627,6 +576,7 @@ function renderWords(param) {
     <div class="row filters"><input class="search" id="q" type="search" placeholder="Search English or Hebrew" aria-label="Search words" value="${esc(wordsUi.q)}">
       <select id="sort" aria-label="Sort"><option value="order">Order introduced</option><option value="freq">Most frequent</option><option value="heb">Hebrew A–Z</option></select>
       <select id="ch" aria-label="Chapter"><option value="0">All chapters</option>${BOOK.chapters.map(c => `<option value="${c}">First in chapter ${c}</option>`).join('')}</select></div>
+    ${PARSE_KEY}
     <div class="panel" id="wl">${list()}</div>`;
   $('#sort').value = wordsUi.sort; $('#ch').value = String(wordsUi.ch);
   $('#q').oninput = e => { wordsUi.q = e.target.value; $('#wl').innerHTML = list(); };
@@ -641,7 +591,7 @@ function renderNames() {
     <div class="panel"><ul class="flist names">${BOOK.names.map(l => {
       const toks = (l.occ || []).map(id => BOOK.tokens.get(id));
       const refs = [...new Set(toks.map(t => t.ref))];
-      return `<li><div class="wrow">${heb(lemmaText(l), 'mid')}<span class="wg"><b>${esc(l.gloss)}</b> <span class="muted">${esc(NAME_KIND(l.tm))} · ${l.n}×</span></span></div>
+      return `<li><div class="wrow">${heb(lemmaText(l), 'mid')}<span class="wg"><b>${esc(l.gloss)}</b> <span class="muted">${esc(nameKind(l))} · ${l.n}×</span></span></div>
         <p class="small refs-inline">${refs.map(r => `<a href="#read/${r}">${esc(r.replace('.', ':'))}</a>`).join(', ')}</p></li>`;
     }).join('')}</ul></div>`;
 }
@@ -677,7 +627,8 @@ function momentumHTML(at) {
     const twoWeeksAgo = new Date(at); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
     const key7 = store.todayKey(weekAgo), key14 = store.todayKey(twoWeeksAgo);
     const pastKey = Object.keys(state.snapshots || {}).filter(k => k <= key7 && k >= key14).sort().pop();
-    const then = pastKey ? Number(state.snapshots[pastKey]?.avgInterval) : NaN;
+    const past = pastKey ? state.snapshots[pastKey]?.avgInterval : null;
+    const then = past === null || past === undefined ? NaN : Number(past);
     line = Number.isFinite(then)
       ? `Review cards now come back every ${nowAvg} days on average, ${nowAvg > then ? 'up from' : nowAvg < then ? 'down from' : 'the same as'} ${esc(String(then))} a week ago.`
       : `Review cards now come back every ${nowAvg} days on average. Check back next week to see the gap grow.`;
@@ -767,11 +718,11 @@ function renderSettings() {
   };
   $('#import').onchange = async e => {
     const file = e.target.files[0]; if (!file) return;
-    try { state = store.importState(await file.text()); scheduler = makeScheduler(state.settings); invalidateStages(); applyHebSize(); persist(); toast('Progress imported'); renderSettings(); }
+    try { state = store.importState(await file.text()); scheduler = makeScheduler(state.settings); invalidateStages(); resetSession(); applyHebSize(); persist(); toast('Progress imported'); renderSettings(); }
     catch (err) { toast(err.message || 'Could not read that file'); }
   };
   $('#reset').onclick = () => {
-    if (confirm('Erase all progress on this device? Export first if you want a backup.')) { state = store.resetState(); scheduler = makeScheduler(state.settings); invalidateStages(); applyHebSize(); toast('Progress cleared'); renderSettings(); }
+    if (confirm('Erase all progress on this device? Export first if you want a backup.')) { state = store.resetState(); scheduler = makeScheduler(state.settings); invalidateStages(); resetSession(); applyHebSize(); toast('Progress cleared'); renderSettings(); }
   };
 }
 

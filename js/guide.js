@@ -122,6 +122,14 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   return { queue, phaseOf, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
 }
 
+// What is left of today's allowances, given the card ids introduced today: new words (counted by their recall
+// card) and new deepen/tell-apart cards (form, which). In-verse cards finishing a meet use no allowance.
+export function allowances(introducedToday, newPerDay) {
+  const words = introducedToday.filter(id => id.endsWith(':recall')).length;
+  const extra = introducedToday.filter(id => /:(form|which)(:|$)/.test(id)).length;
+  return { words: Math.max(0, newPerDay - words), extra: Math.max(0, newPerDay - extra) };
+}
+
 /* ───────────────────────── hint ladder, nudges, grading ───────────────────────── */
 
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.
