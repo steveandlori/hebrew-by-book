@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, WRITE_READY_VIEWS, inPlaceViews, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -219,16 +219,19 @@ function startSession() {
   session.day = store.todayKey();
   session.done = 0; session.revealed = false; session.current = null;
   session.meetStars = 0; session.whichStreak = 0;
-  const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance() });
+  const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance(), writeAfter: state.settings.writeAfter });
   session.queue = r.queue; session.phaseOf = r.phaseOf; session.counts = r.counts;
   session.stagesBefore = stagesByItem(DECK, cardState);
   session.total = r.queue.length;
   renderStudy();
 }
 
+// Write the Hebrew set to Off keeps those cards out of every queue.
+const writeOn = c => c.kind !== 'write' || state.settings.writeAfter > 0;
+
 function studyAhead(n = 10) {
   const at = now();
-  const ahead = DECK.filter(c => !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
+  const ahead = DECK.filter(c => writeOn(c) && !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
   const extraNew = ahead.length < n ? DECK.filter(c => isNew(c.id) && c.kind === 'recall').slice(0, n - ahead.length) : [];
   session.queue = shuffle([...ahead, ...extraNew]);
   session.total = session.done + session.queue.length;
@@ -279,9 +282,10 @@ function onGrade(rating) {
 // The second time a word is read in place, its Write the Hebrew card joins this session a few cards later
 // (within the day's cap on new practice cards), rather than waiting for the next session to be planned.
 function queueWriteCard(item) {
+  const after = state.settings.writeAfter;
   const wc = DECK_BY_ID[`${item.id}:write`];
-  if (!wc || !isNew(wc.id) || session.queue.includes(wc)) return;
-  if (inPlaceViews(DECK.filter(c => c.item.id === item.id), cardState) < WRITE_READY_VIEWS) return;
+  if (!after || !wc || !isNew(wc.id) || session.queue.includes(wc)) return;
+  if (inPlaceViews(DECK.filter(c => c.item.id === item.id), cardState) < after) return;
   const queuedNew = session.queue.filter(c => c.kind !== 'recall' && c.kind !== 'ctx' && isNew(c.id)).length;
   if (extraAllowance() - queuedNew <= 0) return;
   session.queue.splice(Math.min(session.queue.length, 3), 0, wc);
@@ -771,7 +775,9 @@ function renderSettings() {
         <div class="seg" role="group"><button data-gb="2" aria-pressed="${s.gradeButtons === 2}">Not yet / Got it</button><button data-gb="3" aria-pressed="${s.gradeButtons === 3}">+ Partly</button><button data-gb="4" aria-pressed="${s.gradeButtons === 4}">+ Easy</button></div></div>
       <div class="field"><label>Writing pad</label><span class="help">A space under each question to write your answer by finger, stylus or mouse. Writing keeps self-grading honest.</span>
         <div class="seg" role="group"><button data-pad="1" aria-pressed="${s.showPad}">Show</button><button data-pad="0" aria-pressed="${!s.showPad}">Hide</button></div></div>
-      <div class="field"><label>Write the Hebrew</label><span class="help">Once you have read a word in its verse a couple of times, a card blanks it in its verse and asks you to write the Hebrew on the pad: its dictionary form, or the word as it stands in the verse. The answer shows both.</span>
+      <div class="field"><label for="wa">Write the Hebrew</label><span class="help">Once you have read a word in its verse this many times (in-verse and other-form cards, right or wrong), a card blanks it in its verse and asks you to write the Hebrew on the pad. Off removes these cards, including ones already started.</span>
+        <select id="wa">${[[1, 'After 1 view in its verse'], [2, 'After 2 views'], [3, 'After 3 views'], [5, 'After 5 views'], [0, 'Off']].map(([n, l]) => `<option value="${n}" ${s.writeAfter === n ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <span class="help">Write its dictionary form, or the word as it stands in the verse. The answer shows both.</span>
         <div class="seg" role="group"><button data-wf="lemma" aria-pressed="${s.writeForm === 'lemma'}">Dictionary form</button><button data-wf="verse" aria-pressed="${s.writeForm === 'verse'}">As in the verse</button></div></div>
     </div>
     <div class="panel"><h2>Your progress</h2><p class="small muted">Progress is saved in this browser only. Export it to move to another phone or laptop, or as a backup.</p>
@@ -787,6 +793,7 @@ function renderSettings() {
   view.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { s.hebSize = b.dataset.hs; applyHebSize(); save(); renderSettings(); });
   view.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { s.gradeButtons = Number(b.dataset.gb); save(); renderSettings(); });
   view.querySelectorAll('[data-pad]').forEach(b => b.onclick = () => { s.showPad = b.dataset.pad === '1'; save(); renderSettings(); });
+  $('#wa').onchange = e => { s.writeAfter = Number(e.target.value); if (!s.writeAfter) session.queue = session.queue.filter(writeOn); save(); };
   view.querySelectorAll('[data-wf]').forEach(b => b.onclick = () => { s.writeForm = b.dataset.wf; save(); renderSettings(); });
   $('#export').onclick = () => {
     const blob = new Blob([store.exportState(state)], { type: 'application/json' });
@@ -824,7 +831,7 @@ function resumeOrStart() {
   const sameDay = session.day === store.todayKey();
   if (!sameDay) { startSession(); return; }
   if (session.current || session.queue.length) { renderStudy(); return; }
-  const fresh = dueCards().filter(c => !isNew(c.id));
+  const fresh = dueCards().filter(c => writeOn(c) && !isNew(c.id));
   if (fresh.length) {
     session.queue.push(...fresh);
     session.total += fresh.length;

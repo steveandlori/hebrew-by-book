@@ -112,3 +112,14 @@ test('write cards share the extra budget with form and Which word? cards', () =>
   const two = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 0, extra: 2, rng });
   assert.equal(two.counts.deepen + two.counts.tell, 2);
 });
+
+test('writeAfter sets the unlock threshold, and 0 drops write cards entirely', () => {
+  const deck = [...w('a', ['recall', 'ctx', 'write'])];
+  const one = { 'a:recall': rev(), 'a:ctx': { ...rev(), reps: 1 } };
+  const get = cards => id => cards[id] || null;
+  assert.deepEqual(phases(composeSession({ deck, getCard: get(one), isDue: never, newWords: 0, extra: 5, writeAfter: 1, rng }), 'deepen'), ['a:write']);
+  assert.deepEqual(phases(composeSession({ deck, getCard: get(one), isDue: never, newWords: 0, extra: 5, writeAfter: 2, rng }), 'deepen'), []);
+  const started = { ...one, 'a:write': rev() };
+  const off = composeSession({ deck, getCard: get(started), isDue: () => true, newWords: 0, extra: 5, writeAfter: 0, rng });
+  assert.ok(!off.queue.some(c => c.kind === 'write'));
+});

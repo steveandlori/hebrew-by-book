@@ -34,3 +34,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Feature ideas: Meet stars; write-the-Hebrew cards | Steve | approved both; Read fill-in-the-blank declined for now; stars gold with an outline |
 | 2026-10-23 | Meet stars + Which-word spark; Write the Hebrew cards + setting | coordinator | done, js 67 / py 50; Playwright: bursts 1-5 of 5, write card front/hints/back at 390px, both settings, no console errors |
 | 2026-10-23 | Write cards unlock after 2 in-place views (was 3 days stable) | Steve → coordinator | done |
+| 2026-10-23 | Write unlock threshold as a setting (1/2/3/5/Off, default 2) | Steve → coordinator | done |

@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS = {
   introSeen: false,  // How it works shown once on first visit
   showPad: true,     // writing pad under recall prompts
   writeForm: 'lemma', // Write-the-Hebrew cards ask for the dictionary form ('lemma') or the form in the verse ('verse')
+  writeAfter: 2,       // in-verse views that unlock a word's Write the Hebrew card; 0 = off
 };
 
 function normalizeSettings(raw) {
@@ -20,6 +21,7 @@ function normalizeSettings(raw) {
   if (!['pointed', 'unpointed'].includes(s.pointing)) s.pointing = 'pointed';
   if (!['s', 'm', 'l'].includes(s.hebSize)) s.hebSize = 'm';
   if (!['lemma', 'verse'].includes(s.writeForm)) s.writeForm = 'lemma';
+  if (![0, 1, 2, 3, 5].includes(s.writeAfter)) s.writeAfter = DEFAULT_SETTINGS.writeAfter;
   if (!(Number(s.newPerDay) > 0)) s.newPerDay = DEFAULT_SETTINGS.newPerDay;
   return s;
 }

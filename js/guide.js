@@ -64,6 +64,7 @@ export const PHASE_LABEL = { recall: 'Recall', meet: 'Meet', deepen: 'Deepen', t
 const DEEPEN_KINDS = new Set(['form', 'write']);
 // Write-the-Hebrew cards wait until the word has been read in place (its in-verse and other-form cards)
 // this many times (Steve, 2026-10-23: "after the word has been read in place a couple of times").
+// The default; Settings can change it, and 0 turns Write the Hebrew off.
 export const WRITE_READY_VIEWS = 2;
 
 // Times a word has been read in place: reviews of its in-verse and other-form cards.
@@ -84,8 +85,10 @@ function interleave(...lists) {
 
 // Builds today's guided queue in phases: recall (due), meet (new words as recall + in-verse pairs),
 // deepen (other forms of graduated words; writing the Hebrew of words recalled steadily) and tell apart (Which word? cards for graduated words).
-// `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today.
-export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, rng = Math.random }) {
+// `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today;
+// `writeAfter` = in-place views that unlock a word's Write the Hebrew card (0: no write cards at all).
+export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random }) {
+  if (!writeAfter) deck = deck.filter(c => c.kind !== 'write');
   const stages = stagesByItem(deck, getCard);
   const isNew = id => !getCard(id);
   const settled = iid => stages.get(iid) === 'graduated' || stages.get(iid) === 'solid';
@@ -100,7 +103,7 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
   const byItem = new Map();
   for (const c of deck) { if (!byItem.has(c.item.id)) byItem.set(c.item.id, []); byItem.get(c.item.id).push(c); }
-  const writeReady = iid => inPlaceViews(byItem.get(iid), getCard) >= WRITE_READY_VIEWS;
+  const writeReady = iid => inPlaceViews(byItem.get(iid), getCard) >= writeAfter;
   const deepenNew = deck.filter(c => c.kind === 'form' && isNew(c.id) && settled(c.item.id));
   const writeNew = deck.filter(c => c.kind === 'write' && isNew(c.id) && writeReady(c.item.id));
   // In-verse cards whose recall card was met but which were left behind finish the meet first (no new word used).
