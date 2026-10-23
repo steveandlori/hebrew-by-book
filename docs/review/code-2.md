@@ -172,3 +172,56 @@ none of them exceeds `newPerDay`. The `_splits` code has no defect that shows in
 | `_notes` H1931f "Not הוּא 'he'… In the Torah הִיא is usually written הוא and read הִיא" | VERIFIED | GKC §32l (Wikisource): Kethîbh הוא for the feminine "except in eleven places", pointed הִוא, "Qerê perpetuum". BDB says the same (feminine written only 11× in the Pentateuch). The wording is neutral, as the covenant requires. |
 | Glosses "she; it" (H1931f), "he; it" (H1931) | VERIFIED | BDB: "pron. of the 3rd ps. sing., he, she, used also (in both genders) for the neuter, it". The "that" sense is not needed in Ruth. |
 | Cited as GKC §32l | VERIFIED | Paragraph letter confirmed on Wikisource. |
+
+## Confirmation pass (2026-10-23, against 4a0b75d; fixes in 4d664d0)
+
+I re-ran the original Node probes against HEAD. Suites: `node --test` 74 passed; `pytest pipeline/tests` 50 passed.
+There was no browser, so the app.js-only fixes are confirmed by reading the code.
+
+| id | verdict | evidence |
+|----|---------|----------|
+| C2-1 | FIXED | A rescan of all 284 Write cards in both pointings finds 0 cards with a same-lexeme token visible. 10 cards now carry a `blank` list (e.g. H3201 4:6, both אוּכַל blanked). |
+| C2-2 | FIXED | No Write card targets a k/q token. `writeTarget` returns null for the only 3 words whose occurrences are all k/q places: H4129, H2962 and H8071, which now have no Write card (stated in the deck.js header). No `blank` list contains a k/q token in Ruth. |
+| C2-3 | FIXED | `hintLadder` for write is: lemma mode pos → firstLetter → sound; verse mode pos → sound → lemma. The `pos` hint no longer carries `tr`. |
+| C2-4 | FIXED | Same harness as before: write small, expand, stroke at (700,500), Done, new stroke. Line width is now 2.5 (was 0.625). Widths are stored per path in ink units, and pen ink is drawn at least 1 px wide. |
+| C2-5 | FIXED (code) | The Off handler clears a current write card and takes it, and the removed queue cards, off `total`. `onGrade` requeues only `writeOn` cards. The wrap-up's `next` filters with `writeOn`. On return, `resumeOrStart` → `renderStudy` → `nextCard`. |
+| C2-6 | ACCEPTED | Steve chose it. The deck.js and guide.js comments now describe `writeAfter` views. |
+| C2-7 | FIXED | The probe `carryMeet(saved 5★, +2 fresh ids)` now carries 2★ (was 5). With no growth it still carries 5★. |
+| C2-8 | FIXED | The blank is followed by `־` when `t.j` (regex probe on a joined token), and render.test.mjs adds a test. |
+| C2-9 | FIXED (code) | `session.writeForm` is fixed in `nextCard`. Face, pad title, ladder and target all read `writeForm()`. |
+| C2-10 | ACCEPTED | Noted in STATUS.md:108. |
+| C2-11 | FIXED (code) | `onKey` returns while `session.pad.isExpanded()`. Escape still reaches the pad's own listener. |
+
+### New findings from the fixes
+| id | severity | label | one line |
+|----|----------|-------|----------|
+| C2-12 | MINOR | VERIFIED | Pad: a stroke that runs off the canvas edge (pointer capture keeps tracking it) counts in the ink extent, so the next redraw shrinks all the ink |
+| C2-13 | MINOR | VERIFIED | With a `blank` list the verse shows two identical blanks, and nothing marks which one the card asks for |
+| C2-14 | MINOR | VERIFIED | `carryMeet`'s growth rule can lower stars already shown (3★ → 2★), against the "a star once earned stays" comment |
+
+**C2-12, pad.js `extent()`/`fitScale()`.**
+- **Repro (stub harness):** on a 340×150 pad, draw (50,50)→(120,140), then (150,60)→(160,400), dragging past the
+  bottom edge. Snapshot and restore it into a new pad, as a hint re-render does.
+- **Result:** everything is redrawn at 37%. The first stroke now ends at (45,52).
+- **Before this change:** off-canvas points were simply clipped.
+- **Fix:** clamp the stored points to the surface at `pointermove` (`[0, cssW/scale] × [0, cssH/scale]`), or clamp
+  them when computing `extent()`.
+
+**C2-13, app.js frontHTML 'write' + deck.js `writeTarget` fallback.**
+- **Affected cards:** in 6 of the 10 cards with a `blank` list, the blanked forms differ, so the two blanks call for
+  different answers:
+  - H8199 1:1: target הַשֹּׁפְטִים, other blank שְׁפֹט;
+  - H5493 4:1: target וַיָּסַר, other blank סוּרָה;
+  - H8198 2:13: target שִׁפְחֹתֶיךָ, other blank שִׁפְחָתֶךָ;
+  - also H270, H5048 and H7997a.
+- **Effect:** in "As in the verse" mode the learner must guess the target from the English cue alone. The difference
+  can be as small as "your maidservants" vs "your maidservant".
+- **Fix:** mark the target blank (e.g. class `blank target`, aria-label "the word to write") and show the others as
+  plain blanks. Or choose a different target where the forms in the verse differ.
+
+**C2-14, guide.js `carryMeet`.**
+- **Probe:** saved 3★ (steps a:3, a:3, x:2 of 4 ids), plus 2 fresh ids, gives `stars: 2`.
+- **Why it is only MINOR:** this happens only when Meet grows after a reload (new words per day raised), and it is
+  arguably honest.
+- **Fix:** update the `meetStarsNow` comment (app.js), or keep the earned stars and add the new cards to a sixth
+  "bonus" round.

@@ -178,7 +178,8 @@ export function carryMeet(saved, day, phaseOf) {
   for (const id of saved.ids) if (phaseOf.has(id)) phaseOf.set(id, 'meet');
   const kept = saved.ids.filter(id => id in saved.steps || phaseOf.has(id));
   const ids = [...new Set([...kept, ...fresh])];
-  // Meet grew since (more new words a day): stars earned stay only as far as the larger round supports.
+  // Meet grew since (more new words a day): a bigger round, so stars are recounted for it and may go down,
+  // rather than showing "Meet complete" while new cards remain.
   const grew = fresh.some(id => !saved.ids.includes(id));
   const stars = grew ? Math.min(saved.stars || 0, meetStars(Object.values(saved.steps), ids.length)) : (saved.stars || 0);
   return { day, ids, steps: { ...saved.steps }, stars };

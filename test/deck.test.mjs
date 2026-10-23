@@ -92,7 +92,8 @@ test('Write the Hebrew: one card per word, never on a written/read place, answer
     assert.ok(!t.kq, l.id);
     const blank = c.blank ? [c.token, ...c.blank] : c.token;
     const html = R.verseHTML(v, { blank, tappable: true });   // tappable words carry their token id
-    for (const x of v.t) if (x.lex === l.id) assert.ok(!html.includes(`data-tok="${x.id}"`), `${l.id} ${v.ref} shows ${x.p}`);
+    for (const x of v.t) if (x.lex === l.id || x.c === t.c) assert.ok(!html.includes(`data-tok="${x.id}"`), `${l.id} ${v.ref} shows ${x.p}`);
+    if (c.blank) assert.equal((html.match(/class="w blank asked"/g) || []).length, 1, l.id);
   }
   // the three words found only at written/read places in Ruth
   for (const id of ['H2962', 'H8071', 'H4129']) assert.ok(!deck.some(c => c.id === `${id}:write`), id);

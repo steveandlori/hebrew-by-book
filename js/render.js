@@ -32,10 +32,13 @@ export function makeRenderer({ lexemes, isPointed, stageOf }) {
   const heb = (text, cls = '') => `<span class="heb${cls ? ' ' + cls : ''}" lang="he" dir="rtl">${esc(text)}</span>`;
   const glossLine = t => { if (t.gl) return t.gl.gloss; const l = lexemes.get(t.lex); return l ? l.gloss : ''; };
 
-  // One word of a verse. o: { highlight, blank (a token id or a list), tappable, glosses, stages, noJoin }
+  // One word of a verse. o: { highlight, blank (a token id, or a list whose first id is the one asked for),
+  // tappable, glosses, stages, noJoin }
   function tokHTML(t, o, extra = '') {
     if (o.blank === t.id || (Array.isArray(o.blank) && o.blank.includes(t.id))) {
-      return `<span class="w blank" role="img" aria-label="missing word"><span class="wt"></span></span>${t.j && !o.noJoin ? MAQQEF : ''}`;
+      // With several blanks, the one the card asks for is marked; the others only hide a copy of the answer.
+      const asked = !Array.isArray(o.blank) || o.blank[0] === t.id;
+      return `<span class="w blank${asked ? ' asked' : ''}" role="img" aria-label="${asked ? 'the missing word' : 'another word, hidden'}"><span class="wt"></span></span>${t.j && !o.noJoin ? MAQQEF : ''}`;
     }
     const cls = ['w'];
     if (o.highlight === t.id) cls.push('hl');

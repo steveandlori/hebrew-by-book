@@ -321,7 +321,8 @@ function queueWriteCard(item) {
 }
 
 // Meet is the long stretch of a day, so it is marked in fifths: a star for each fifth of the clean recalls
-// its cards need (three each). A star once earned stays, even if a Not yet sets a card back.
+// its cards need (three each). A star once earned stays, even if a Not yet sets a card back. The one exception:
+// raising new words a day mid-day makes a bigger round, and its stars are recounted (see carryMeet).
 function meetStarsNow() {
   return Math.max(session.meetStars, meetStars(session.meetSteps.values(), session.counts ? session.counts.meet : 0));
 }

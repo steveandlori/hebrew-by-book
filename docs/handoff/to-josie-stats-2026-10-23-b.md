@@ -63,3 +63,13 @@ Test: `test/guide.hints.test.mjs`, "carryMeet: stars earned stay unless Meet gre
 
 The rest of the findings concern Write the Hebrew cards (the answer visible elsewhere in the verse, written/read
 places, hint order) and that setting's Off switch. They have no counterpart in josie-stats.
+
+## Addendum, after the confirmation pass
+
+- **If you adopt the ink-extent pad (item 1), also clamp points to the surface** (`pos()` in Hebrew by Book's
+  `js/pad.js`). Pointer capture keeps reporting a stroke dragged past the canvas edge. Those points count toward the
+  ink's extent, so the next redraw shrinks all the ink: in the review's probe, a drag to y=400 on a 150 px pad redrew
+  everything at 37%. Your current frame model does not have this problem.
+- **`carryMeet`'s growth rule (item 4) can lower stars already shown,** for example 3 to 2, when Meet grows mid-day.
+  We kept it, judging that a bigger round should not say "Meet complete" while new cards remain. We corrected the
+  "a star once earned stays" comment to name this one exception. Decide for yourselves.

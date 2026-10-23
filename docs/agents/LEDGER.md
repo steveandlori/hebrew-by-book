@@ -43,3 +43,5 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Review 2: code (11 findings, 5 should-fix) + QA (FIX FIRST: F1-F4) | general-purpose ×2 | reports in docs/review/code-2.md, qa-2.md |
 | 2026-10-23 | Fixes: write verse choice + no k/q (C2-1/2, F4), hint order (C2-3), pad fits ink (C2-4, F1), Off mid-card (C2-5, F3), carryMeet growth (C2-7), maqqef (C2-8), writeForm per card (C2-9), keys with pad open (C2-11), day-start stages (F2), comments (C2-6) | coordinator | js 74; Playwright checks of F1/F2/F3/C2-11 |
 | 2026-10-23 | Notes for josie-stats part 2 (pad fit, keys, day-start, carryMeet) copied to its docs/handoff | coordinator | done |
+| 2026-10-23 | Confirmation pass: code (9 fixed, 2 accepted; new C2-12..14 minor) + QA (SHIP; new F5 minor) | general-purpose ×2 | appended to code-2.md, qa-2.md |
+| 2026-10-23 | Fixed C2-12 (clamp pad points), C2-13 (asked blank marked), C2-14 (comment: growth recount), F5 (same spelling counts as giving the answer away) | coordinator | js 74; two-blank card checked in browser; josie note addendum |

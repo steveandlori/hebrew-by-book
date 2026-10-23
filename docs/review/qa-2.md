@@ -172,3 +172,77 @@ Nothing breaks the app or misleads about the text. Fix first:
 4. **F4** (minor). The blanked word sometimes appears elsewhere in its verse.
 
 Side effect: the Playwright export test downloaded `.playwright-mcp/hebrew-by-book-progress-2026-10-23.json`.
+
+## Confirmation pass
+
+Commit 4d664d0 (HEAD 4a0b75d), served on port 8774, in Chromium. Screenshots are `.playwright-mcp/qa2c-*.png`.
+
+| Scenario | Result |
+|----------|--------|
+| 1 Pad (F1) | PASS |
+| 3 Wrap-up after a reload (F2) | PASS |
+| 5 Write the Hebrew (F3, F4) | PASS, apart from one leftover answer leak (F5, minor) |
+| 8 Regressions and console | PASS |
+
+**1. Pad (PASS at 390x844 and 1280x900).**
+- **Full screen only.** The ink box was `[38,198,263,253]` at both sizes, on all 4 full-screen passes. That is the
+  stroke as drawn (x 40-300, y 200-450), so it shows at 100%.
+- **Small pad only.** The ink box was `[18,18,183,83]` on the small pad and in full screen, on 3 round trips (100%).
+- **The original F1 repro.** Write in full screen, write on the small pad, then go full screen again. Both strokes
+  now show: the box is `[18,39,370,167]` at 390 and `[30,67,1246,282]` at 1280, the same on 3 passes. In this mixed
+  case the whole drawing shrinks to fit, as intended (`qa2c-pad-390-small-after.png`, `qa2c-pad-390-big-after.png`).
+- **Other checks.** The eraser removed ink (781 to 635 px, `aria-pressed=true`). A hint kept the ink (635 to 636 px).
+  Clear leaves 0 px.
+
+**3. Wrap-up after a reload (PASS).**
+- At 3 a day, with a reload after 6 grades: "3 words met, 3 graduated". The same run with no reload gives the same.
+- At 10 a day, with a reload after 25 grades: "10 words met, 10 graduated", 5 of 5 stars, the same as with no reload
+  (`qa2c-wrapup-10-reload.png`).
+- Stars held through reloads: 1 to 1, 2 to 2 and 3 to 3.
+- A reload on the wrap-up itself shows "All caught up".
+- The reload still adds Another form and Which word? cards for words graduated earlier that day (90 cards against
+  60). This was the QUESTIONABLE item in the first pass and is unchanged.
+
+**5. Write the Hebrew (PASS, one minor leftover).**
+- **Deck-wide check (node, all cards, pointed and unpointed).** 287 words give 284 Write cards. H2962, H8071 and
+  H4129 have none: their only occurrences are written/read places, as intended. No Write card targets a written/read
+  token. Each card renders the expected number of blanks (10 cards blank 2). No card leaves another token of the same
+  word visible.
+- **F5, VERIFIED, MINOR: one card still shows the answer, through a homograph.** `H3588b:write` (כִּי אִם "except,
+  but") in 3:18 blanks the second כִּי. The first כִּי in the verse belongs to a different word (H3588a), so it stays
+  visible. In "as in the verse" mode that is the exact answer. In dictionary-form mode, both parts of the answer
+  "כִּי אם־" are visible (the earlier כִּי and the following אִם). The fix checks for the same word, not the same
+  spelling.
+- **Unlocks.** Words were seeded with in-verse reps below and at N; other card kinds were marked done. At the start
+  of the session the Deepen count was 5, 3, 3 and 3 for N = 1, 2, 3 and 5, exactly the words at or above N. Off gave
+  "All caught up".
+- **Front of the card.** In 1:3, 2:3 and 1:8, the target form was absent from `#view.innerHTML`, there was 1 blank,
+  and the verse had no points in unpointed mode. The cue showed ("man / husband of noun", "return! (f pl) verb").
+- **Hint ladders.**
+  - Dictionary form: "Part of speech noun → It starts with א → The dictionary form sounds like ʾîš", then the button
+    reads "Show me" (`qa2c-write-hints-lemma.png`).
+  - As in the verse: "Part of speech noun → The dictionary form sounds like śādeh → Dictionary form שָׂדֶה noun"
+    (`qa2c-write-hints-verse.png`).
+  - "Show me" reveals "In the verse מִשְּׂדֵי".
+- **Reveal.** Both forms are shown, under "Dictionary form" and "In Ruth N:N".
+- **Unpointed.** The target is שבנה and the dictionary form שוב, with no points.
+- **Switching the form mid-session.** The card on screen keeps its form ("In the verse מִשְּׂדֵי" after switching to
+  dictionary form). The next card uses the new form.
+- **F3 fixed.** I turned Off while a Write card was showing, with "Deepen 8 left". Today then showed "Session done",
+  with no Write card and none coming back. "Next cards come due in 10 days" ignores Write cards
+  (`qa2c-write-off.png`).
+
+**8. Regressions (PASS).**
+- **Keyboard.** `h` then Space then Space logged an automatic `2h1`. Then 2, 3 and 1 were logged.
+- **Full-screen pad.** While it is open, Space and `h` are ignored (no reveal, no hint). Escape closes it and returns
+  focus to "Write bigger".
+- **Read.** The 1:3 sheet shows "הִיא she". The 1:8 sheet shows written and read. Haktuvim links to Ruth.1 in a new
+  tab.
+- **Other views.** Written and read lists 13 places. Words has 287 and its deep link opens the entry. Names lists 30.
+  Progress ("of 1334 cards") and How it works render.
+- **Settings.** Export and import round-trip ("Progress imported", 4 cards). Start over clears storage ("Progress
+  cleared").
+- **Console.** No errors and no page errors.
+
+**Verdict: SHIP.** F1-F4 are fixed. F5 (one homograph Write card) is minor and can be fixed later. I removed the
+downloaded progress JSON from `.playwright-mcp`.

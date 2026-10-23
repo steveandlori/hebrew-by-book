@@ -76,8 +76,11 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
   }
 
   function pos(e) {
+    // Clamped to the surface: pointer capture keeps reporting a stroke dragged past the edge, and ink out
+    // there would only shrink everything else at the next redraw.
     const r = canvas.getBoundingClientRect();
-    return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale];
+    const x = Math.min(Math.max(e.clientX - r.left, 0), cssW), y = Math.min(Math.max(e.clientY - r.top, 0), cssH);
+    return [x / scale, y / scale];
   }
   function setTool(t) {
     tool = t;

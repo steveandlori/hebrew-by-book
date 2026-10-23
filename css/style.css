@@ -545,6 +545,7 @@ body.sheet-open .view { padding-bottom: 72dvh; }
 .cue { margin: 10px 0 4px; font-size: 18px; }
 .cue .en { color: var(--pen); }
 .w.blank .wt { display: inline-block; min-width: 3.2em; height: 1em; vertical-align: -.1em; border-bottom: 2px solid var(--pen); background: var(--pen-soft); border-radius: 4px 4px 0 0; }
+.w.blank:not(.asked) .wt { background: transparent; border-bottom: 2px dashed var(--ink-3); min-width: 2.2em; }
 .compare.one { grid-template-columns: 1fr; }
 .heb-target { margin: 4px 0; }
 

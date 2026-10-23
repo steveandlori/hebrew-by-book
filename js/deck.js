@@ -76,13 +76,14 @@ export function distractorsFor(book, lex, n = 3) {
   return cands.map(o => ({ o, s: score(o) })).sort((a, b) => a.s - b.s || a.o.order - b.o.order).slice(0, n).map(x => x.o);
 }
 
-// Where a Write the Hebrew card blanks the word: a verse in which it occurs once, outside any written/read place.
-// If every verse has it more than once, every occurrence in the chosen verse is blanked (`blank`), with the whole
-// written/read group where one is involved. A word found only at written/read places gets no Write card.
+// Where a Write the Hebrew card blanks the word: a verse in which it occurs once, outside any written/read place,
+// and in which no other word has the same spelling (3:18 has כִּי "that" beside the כִּי of כִּי אִם "except").
+// Failing that, every such token in the chosen verse is blanked too (`blank`), with the whole written/read group
+// where one is involved. A word found only at written/read places gets no Write card.
 export function writeTarget(book, lex) {
   const plainOcc = (lex.occ || []).map(id => book.tokens.get(id)).filter(t => t && !t.kq);
   if (!plainOcc.length) return null;
-  const others = t => book.verseOf.get(t.id).t.filter(x => x.id !== t.id && x.lex === lex.id);
+  const others = t => book.verseOf.get(t.id).t.filter(x => x.id !== t.id && (x.lex === lex.id || x.c === t.c));
   const lone = plainOcc.filter(t => !others(t).length);
   if (lone.length) return { token: lone[Math.min(2, lone.length - 1)].id };
   const t = plainOcc[Math.min(2, plainOcc.length - 1)];
