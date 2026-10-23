@@ -19,3 +19,8 @@
   shows no verse translations, only word glosses from each reading's own dictionary entry and a literal English
   rendering of each word form (Steve asked for these on 2026-10-22: "and she walked/went").
 - Nothing inherited counts as verified. Do not trust counts or claims in this brief; check them.
+
+## Test servers
+
+Stop only the server you started, by its PID or its task. Never kill every `python.exe` (a josie-stats QA agent did,
+2026-10-23). Use a port of your own (8771 and up); a fresh port also avoids the browser running cached modules.

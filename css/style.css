@@ -573,3 +573,4 @@ body.sheet-open .view { padding-bottom: 72dvh; }
 @media (prefers-reduced-motion: reduce) { .burst { animation: burst-fade 1.8s linear forwards; } }
 
 .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
+@media (forced-colors: active) { .stars i { color: CanvasText; -webkit-text-stroke: 0; } .stars i:not(.on) { opacity: .3; } }

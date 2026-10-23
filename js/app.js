@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, meetStep, meetStars, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -222,7 +222,14 @@ function startSession() {
   session.done = 0; session.revealed = false; session.current = null;
   session.meetStars = 0; session.meetSteps = new Map(); session.whichStreak = 0;
   const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance(), writeAfter: state.settings.writeAfter });
-  session.queue = r.queue; session.phaseOf = r.phaseOf; session.counts = r.counts;
+  session.queue = r.queue; session.phaseOf = r.phaseOf;
+  // Stars earned earlier today survive a reload (josie-stats found they reset).
+  const meet = carryMeet(state.meetDay, session.day, r.phaseOf);
+  state.meetDay = meet;
+  session.meetSteps = new Map(Object.entries(meet.steps)); session.meetStars = meet.stars;
+  session.counts = { recall: 0, meet: 0, deepen: 0, tell: 0 };
+  for (const p of r.phaseOf.values()) session.counts[p]++;
+  session.counts.meet = meet.ids.length;
   session.stagesBefore = stagesByItem(DECK, cardState);
   session.total = r.queue.length;
   renderStudy();
@@ -269,7 +276,9 @@ function onGrade(rating) {
   // Cards still in learning come back later in this same session.
   const inSteps = updated.state === State.Learning || updated.state === State.Relearning;
   if (session.phaseOf && session.phaseOf.get(card.id) === 'meet') {
-    session.meetSteps.set(card.id, meetStep(session.meetSteps.get(card.id) || 0, rating, !inSteps));
+    const step = meetStep(session.meetSteps.get(card.id) || 0, rating, !inSteps);
+    session.meetSteps.set(card.id, step);
+    if (state.meetDay) state.meetDay.steps[card.id] = step;
   }
   if (inSteps) {
     const pos = Math.min(session.queue.length, 3 + Math.floor(Math.random() * 3));
@@ -281,8 +290,10 @@ function onGrade(rating) {
   const stars = meetStarsNow();
   if (stars > session.meetStars) {
     session.meetStars = stars;
-    celebrate(stars >= 5 ? 'Meet complete ★★★★★' : `Meet: ${stars} of 5 ★`, stars >= 5 ? 'full' : '');
+    if (state.meetDay) state.meetDay.stars = stars;
+    celebrate(stars >= 5 ? 'Meet complete ★★★★★' : `Meet: ${stars} of 5 ★`, stars >= 5 ? 'Meet complete: all 5 stars' : `Meet: ${stars} of 5 stars`, stars >= 5 ? 'full' : '');
   }
+  persist();
 }
 
 // The second time a word is read in place, its Write the Hebrew card joins this session a few cards later
@@ -306,11 +317,14 @@ function meetStarsNow() {
 }
 const starsHTML = n => `<span class="stars" role="img" aria-label="${n} of 5 stars">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}">★</i>`).join('')}</span>`;
 
-// A star (or a smaller spark) floats up in the middle of the screen and fades.
-function celebrate(text, cls = '') {
+// A star (or a smaller spark) floats up in the middle of the screen and fades. Screen readers get plain
+// words through the #announce live region instead of a row of star glyphs (from josie-stats).
+function celebrate(text, spoken, cls = '') {
   const el = document.createElement('div');
   el.className = `burst ${cls}`.trim();
-  el.setAttribute('role', 'status');
+  el.setAttribute('aria-hidden', 'true');
+  const live = $('#announce');
+  if (live) { live.textContent = ''; setTimeout(() => { live.textContent = spoken; }, 50); }
   el.innerHTML = `<span class="burst-star" aria-hidden="true">${cls === 'spark' ? '✦' : '★'}</span><span class="burst-text">${esc(text)}</span>`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1800);
@@ -323,7 +337,7 @@ function phaseStripHTML() {
   for (const c of pending) { const p = session.phaseOf.get(c.id); if (p) left[p]++; }
   const cur = session.current && session.phaseOf.get(session.current.id);
   return `<div class="phases" aria-label="Today's phases">${Object.keys(PHASE_LABEL).filter(p => session.counts[p] > 0).map(p =>
-    `<span class="ph${left[p] ? '' : ' is-done'}${cur === p ? ' now' : ''}">${PHASE_LABEL[p]}<b>${left[p]}</b>${p === 'meet' ? starsHTML(meetStarsNow()) : ''}</span>`).join('')}</div>`;
+    `<span class="ph${left[p] ? '' : ' is-done'}${cur === p ? ' now' : ''}">${PHASE_LABEL[p]}<b>${left[p]}<span class="sr-only"> left,</span></b>${p === 'meet' ? starsHTML(meetStarsNow()) : ''}</span>`).join('')}</div>`;
 }
 
 function padTitle(card) {
@@ -466,7 +480,7 @@ function renderStudy() {
       session.whichStreak = right ? session.whichStreak + 1 : 0;
       renderStudy(); // a right pick counts as Got it, a wrong pick as Not yet
       // Which word? is graded by the app, not by you, so a run of right picks can earn a spark honestly.
-      if (right && session.whichStreak >= 3 && session.whichStreak % 3 === 0) celebrate(`${session.whichStreak} in a row`, 'spark');
+      if (right && session.whichStreak >= 3 && session.whichStreak % 3 === 0) celebrate(`${session.whichStreak} in a row`, `${session.whichStreak} right in a row`, 'spark');
     };
   });
 }

@@ -167,6 +167,19 @@ export function meetStars(steps, totalCards) {
   return Math.min(5, Math.floor(5 * done / (CLEAN_RECALLS * totalCards)));
 }
 
+// Today's Meet progress, carried across a same-day rebuild of the session (a page reload). Ported from
+// josie-stats (its handoff, 2026-10-23). `saved` is the stored {day, ids, steps, stars}; `phaseOf` is the new
+// session's map, changed in place: today's Meet cards that are still queued go back under Meet (the composer
+// files graded ones still in learning under Recall). A saved card that was never graded and is no longer
+// queued is dropped, or it would hold the stars short of 5.
+export function carryMeet(saved, day, phaseOf) {
+  const fresh = [...phaseOf].filter(([, p]) => p === 'meet').map(([id]) => id);
+  if (!saved || saved.day !== day) return { day, ids: fresh, steps: {}, stars: 0 };
+  for (const id of saved.ids) if (phaseOf.has(id)) phaseOf.set(id, 'meet');
+  const kept = saved.ids.filter(id => id in saved.steps || phaseOf.has(id));
+  return { day, ids: [...new Set([...kept, ...fresh])], steps: { ...saved.steps }, stars: saved.stars || 0 };
+}
+
 /* ───────────────────────── hint ladder, nudges, grading ───────────────────────── */
 
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.

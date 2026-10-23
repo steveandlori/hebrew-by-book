@@ -39,3 +39,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Meet stars bunched at the end (counted finished cards); now count clean recalls | Steve → coordinator | done |
 | 2026-10-23 | Handoff notes copied to josie-stats/docs/handoff/ (uncommitted there) | Steve → coordinator | done |
 | 2026-10-23 | Board updated with the day; Steve tried Write the Hebrew: "that worked well too" | Steve → coordinator | done |
+| 2026-10-23 | josie-stats handoff: stars kept across reload (carryMeet), screen-reader announcements, forced-colors, CLEAN_RECALLS test, method wording, QA server hygiene | coordinator | done; js 72; Playwright reload mid-Meet keeps 2 stars, reaches 5 |

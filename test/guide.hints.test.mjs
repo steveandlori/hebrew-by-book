@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { meetStep, meetStars, CLEAN_RECALLS, hintLadder, autoRating, nudgeFor, NUDGES, buildSnapshot, pruneSnapshots, revealLine } from '../js/guide.js';
+import { carryMeet, meetStep, meetStars, CLEAN_RECALLS, hintLadder, autoRating, nudgeFor, NUDGES, buildSnapshot, pruneSnapshots, revealLine } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
 const item = { id: 'H559', he: 'אָמַר', gloss: 'to say', pos: 'V', tr: 'ʾāmar' };
@@ -73,4 +73,26 @@ test('Meet stars rise evenly with clean recalls, not with finished cards', () =>
   assert.deepEqual([5, 11, 17, 23, 29].map(i => seq[i]), [1, 2, 3, 4, 5]);
   assert.equal(seq[4], 0);
   assert.equal(meetStars([], 0), 0);
+});
+
+test('CLEAN_RECALLS matches the scheduler: a new card reaches Review on exactly that many Got its', async () => {
+  const { makeScheduler, emptyCard, grade, Rating } = await import('../js/scheduler.js');
+  const sch = makeScheduler({ retention: 0.9 });
+  let card = emptyCard(new Date('2026-01-01T09:00:00Z')), at = new Date('2026-01-01T09:00:00Z');
+  for (let i = 1; i <= CLEAN_RECALLS; i++) {
+    card = grade(sch, card, Rating.Good, at).card;
+    assert.equal(card.state === State.Review, i === CLEAN_RECALLS, `after ${i} Got it`);
+    at = new Date(card.due.getTime() + 1000);
+  }
+});
+test('carryMeet: a same-day rebuild restores Meet ids, steps and stars; a new day starts fresh', () => {
+  const saved = { day: 'd1', ids: ['a', 'b', 'c'], steps: { a: 3, b: 1 }, stars: 2 };
+  const phaseOf = new Map([['b', 'recall'], ['x', 'meet']]);   // b still in learning, filed under Recall; c dropped
+  const m = carryMeet(saved, 'd1', phaseOf);
+  assert.equal(phaseOf.get('b'), 'meet');
+  assert.deepEqual(new Set(m.ids), new Set(['a', 'b', 'x']));   // c: never graded, not queued -> dropped
+  assert.equal(m.stars, 2);
+  assert.deepEqual(m.steps, { a: 3, b: 1 });
+  const next = carryMeet(saved, 'd2', new Map([['y', 'meet']]));
+  assert.deepEqual(next, { day: 'd2', ids: ['y'], steps: {}, stars: 0 });
 });
