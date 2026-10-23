@@ -6,8 +6,9 @@
 //   ctx     a verse with one occurrence highlighted → meaning?   (meet)
 //   form    up to two other spellings of it in the book          (deepen, once graduated)
 //   which   a verse occurrence → pick the gloss among look-alikes (tell apart, once graduated)
-//   write   a verse with the word blanked + its English → write the Hebrew on the pad (deepen, once recall
-//           is a few days stable; producing a word is harder than recognising it)
+//   write   a verse with the word blanked + its English → write the Hebrew on the pad (deepen, once the word
+//           has been read in its verse `writeAfter` times; Settings). Never on a written/read place (asking for
+//           "the word" there would pick one reading), and never with the answer visible elsewhere in the verse.
 
 export const KIND_LABEL = { recall: 'Word → meaning', ctx: 'In its verse', form: 'Another form', which: 'Which word?', write: 'Write the Hebrew' };
 const MAX_FORM_CARDS = 2;
@@ -75,6 +76,21 @@ export function distractorsFor(book, lex, n = 3) {
   return cands.map(o => ({ o, s: score(o) })).sort((a, b) => a.s - b.s || a.o.order - b.o.order).slice(0, n).map(x => x.o);
 }
 
+// Where a Write the Hebrew card blanks the word: a verse in which it occurs once, outside any written/read place.
+// If every verse has it more than once, every occurrence in the chosen verse is blanked (`blank`), with the whole
+// written/read group where one is involved. A word found only at written/read places gets no Write card.
+export function writeTarget(book, lex) {
+  const plainOcc = (lex.occ || []).map(id => book.tokens.get(id)).filter(t => t && !t.kq);
+  if (!plainOcc.length) return null;
+  const others = t => book.verseOf.get(t.id).t.filter(x => x.id !== t.id && x.lex === lex.id);
+  const lone = plainOcc.filter(t => !others(t).length);
+  if (lone.length) return { token: lone[Math.min(2, lone.length - 1)].id };
+  const t = plainOcc[Math.min(2, plainOcc.length - 1)];
+  const blank = new Set();
+  for (const x of others(t)) { blank.add(x.id); (x.pair || []).forEach(id => blank.add(id)); }
+  return { token: t.id, blank: [...blank] };
+}
+
 export function buildDeck(book) {
   const cards = [];
   for (const lex of book.vocab) {
@@ -93,7 +109,8 @@ export function buildDeck(book) {
       cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id });
       forms++;
     }
-    cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', token: occ[Math.min(2, occ.length - 1)].id });
+    const write = writeTarget(book, lex);
+    if (write) cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', ...write });
     const whichTok = occ[1] || occ[0];
     const distractors = distractorsFor(book, lex);
     if (distractors.length === 3) cards.push({ ...base, id: `${lex.id}:which`, kind: 'which', token: whichTok.id, distractors: distractors.map(d => d.id) });

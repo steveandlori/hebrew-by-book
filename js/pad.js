@@ -15,21 +15,31 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
   pad.querySelector('.pad-title').textContent = title;
   if (!onAnswer) pad.querySelector('[data-pad-answer]').remove();
 
-  // Ink is kept as vector paths in "frame" coordinates: the size of the largest surface written on at
-  // full size. Every resize redraws from the paths, scaled to fit, so shrinking for the small pad and
-  // growing back for the big one never compounds: the big pad always shows the ink at 100%.
-  let paths = [];                // [{ tool, pts: [[x, y], ...] }] in frame coordinates
-  let frame = null;              // { w, h } or null before the first stroke
-  let scale = 1;                 // CSS px per frame unit on the current surface (never above 1)
+  // Ink is kept as vector paths in "ink" coordinates (CSS px at full size). Each surface shows the ink at
+  // 100% when it fits and shrinks it to fit when it does not, redrawing from the paths every time, so
+  // leaving and re-entering full screen never compounds. The fit is to the ink actually written, not to the
+  // surface it was written on: a stroke made on the small pad after a full-screen session is still in view
+  // when full screen opens again. Each stroke keeps the width it was drawn with.
+  let paths = [];                // [{ tool, w, pts: [[x, y], ...] }] in ink coordinates; w = width in ink units
+  let scale = 1;                 // CSS px per ink unit on the current surface (never above 1)
   let current = null;
   let cssW = 0, cssH = 0;        // current drawing surface size in CSS px
   let expanded = false;
   let tool = 'pen';
-  const PEN_WIDTH = 2.5, ERASER_WIDTH = 22;
+  const PEN_WIDTH = 2.5, ERASER_WIDTH = 22, MIN_SHOWN_WIDTH = 1;
 
   const ink = () => (getComputedStyle(document.documentElement).getPropertyValue('--ink') || '#16213A').trim();
   const strokes = () => paths.filter(p => p.tool === 'pen').length;
-  const fitScale = () => (frame ? Math.min(cssW / frame.w, cssH / frame.h, 1) || 1 : 1);
+  // The extent of the pen ink (its far edges, from the top-left corner).
+  function extent() {
+    let w = 0, h = 0;
+    for (const p of paths) if (p.tool === 'pen') for (const [x, y] of p.pts) { w = Math.max(w, x + p.w); h = Math.max(h, y + p.w); }
+    return { w, h };
+  }
+  function fitScale() {
+    const e = extent();
+    return Math.min(1, e.w ? cssW / e.w : 1, e.h ? cssH / e.h : 1) || 1;
+  }
 
   function size(keep) {
     const dpr = window.devicePixelRatio || 1;
@@ -46,12 +56,12 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
     redraw();
   }
 
-  function stylePath(t) {
-    if (t === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = ERASER_WIDTH * scale; }
-    else { ctx.globalCompositeOperation = 'source-over'; ctx.lineWidth = PEN_WIDTH * scale; ctx.strokeStyle = ink(); }
+  function stylePath(p) {
+    if (p.tool === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = p.w * scale; }
+    else { ctx.globalCompositeOperation = 'source-over'; ctx.lineWidth = Math.max(MIN_SHOWN_WIDTH, p.w * scale); ctx.strokeStyle = ink(); }
   }
   function drawPath(p) {
-    stylePath(p.tool);
+    stylePath(p);
     const [x0, y0] = p.pts[0];
     ctx.beginPath(); ctx.moveTo(x0 * scale, y0 * scale);
     if (p.pts.length === 1) ctx.lineTo(x0 * scale + 0.01, y0 * scale);
@@ -76,9 +86,8 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
   }
   function down(e) {
     if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
-    // Writing at full size on a surface bigger than the frame grows the frame to that surface.
-    if (scale === 1) frame = { w: Math.max(frame ? frame.w : 0, cssW), h: Math.max(frame ? frame.h : 0, cssH) };
-    current = { tool, pts: [pos(e)] };
+    // The stroke is as wide on screen as any other drawn here: its width in ink units depends on the scale now.
+    current = { tool, w: (tool === 'eraser' ? ERASER_WIDTH : PEN_WIDTH) / scale, pts: [pos(e)] };
     paths.push(current);
     canvas.setPointerCapture?.(e.pointerId);
     drawPath(current);
@@ -90,19 +99,18 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
     const [lx, ly] = current.pts[current.pts.length - 1];
     const p = pos(e);
     current.pts.push(p);
-    stylePath(current.tool);
+    stylePath(current);
     ctx.beginPath(); ctx.moveTo(lx * scale, ly * scale); ctx.lineTo(p[0] * scale, p[1] * scale); ctx.stroke();
     e.preventDefault();
   }
   function up() { current = null; ctx.globalCompositeOperation = 'source-over'; }
 
-  function clear() { paths = []; frame = null; current = null; scale = 1; redraw(); }
+  function clear() { paths = []; current = null; scale = 1; redraw(); }
 
   // Puts back ink saved with snapshot() (e.g. after a hint re-renders the card).
   function restore(snap) {
     if (!snap || !snap.paths) return;
-    paths = snap.paths.map(p => ({ tool: p.tool, pts: p.pts.map(q => [...q]) }));
-    frame = snap.frame ? { ...snap.frame } : null;
+    paths = snap.paths.map(p => ({ tool: p.tool, w: p.w || (p.tool === 'eraser' ? ERASER_WIDTH : PEN_WIDTH), pts: p.pts.map(q => [...q]) }));
     scale = fitScale();
     redraw();
   }
@@ -149,7 +157,7 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
     isExpanded: () => expanded,
     setTool,
     tool: () => tool,
-    snapshot: () => ({ paths: paths.map(p => ({ tool: p.tool, pts: p.pts.map(q => [...q]) })), frame: frame && { ...frame } }),
+    snapshot: () => ({ paths: paths.map(p => ({ tool: p.tool, w: p.w, pts: p.pts.map(q => [...q]) })) }),
     toDataURL: () => (strokes() > 0 ? canvas.toDataURL('image/png') : null),
     destroy: () => {
       window.removeEventListener('resize', onResize);

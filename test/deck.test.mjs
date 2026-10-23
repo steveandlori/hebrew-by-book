@@ -1,4 +1,5 @@
 // Checks the generated deck for Ruth against the built data (data/ruth.js).
+import { makeRenderer } from '../js/render.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ruth from '../data/ruth.js';
@@ -80,10 +81,19 @@ test('distractorsFor is deterministic', () => {
   assert.deepEqual(distractorsFor(book, l).map(x => x.id), distractorsFor(book, l).map(x => x.id));
 });
 
-test('every vocabulary word has one Write the Hebrew card on one of its occurrences', () => {
+test('Write the Hebrew: one card per word, never on a written/read place, answer never visible in the verse', () => {
+  const R = makeRenderer({ lexemes: book.lexemes, isPointed: () => true, stageOf: () => 'new' });
   for (const l of book.vocab) {
     const ws = deck.filter(c => c.item.id === l.id && c.kind === 'write');
-    assert.equal(ws.length, 1, l.id);
-    assert.ok(l.occ.includes(ws[0].token), l.id);
+    const plainOcc = l.occ.filter(id => !book.tokens.get(id).kq);
+    assert.equal(ws.length, plainOcc.length ? 1 : 0, l.id);   // words only at written/read places get none
+    if (!ws.length) continue;
+    const c = ws[0], t = book.tokens.get(c.token), v = book.verseOf.get(c.token);
+    assert.ok(!t.kq, l.id);
+    const blank = c.blank ? [c.token, ...c.blank] : c.token;
+    const html = R.verseHTML(v, { blank, tappable: true });   // tappable words carry their token id
+    for (const x of v.t) if (x.lex === l.id) assert.ok(!html.includes(`data-tok="${x.id}"`), `${l.id} ${v.ref} shows ${x.p}`);
   }
+  // the three words found only at written/read places in Ruth
+  for (const id of ['H2962', 'H8071', 'H4129']) assert.ok(!deck.some(c => c.id === `${id}:write`), id);
 });

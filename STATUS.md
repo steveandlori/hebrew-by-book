@@ -77,7 +77,10 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     replacing a 3-day wait). The card joins the current session a few cards after the second view. Settings →
     Write the Hebrew sets the number of views (1, 2, 3, 5) or Off; the default 2 may change once Steve has used it. Hints: part of speech and sound, then the
     first letter (or the dictionary form, when the verse form is asked). The Read-mode fill-in-the-blank was
-    declined by Steve for now.
+    declined by Steve for now. After review 2 (`docs/review/code-2.md`, `qa-2.md`), a Write card's verse is one where
+    the word occurs once and is not a written/read place; failing that, every occurrence is blanked. The three words
+    found only at written/read places in Ruth (טֶרֶם 3:14, שִׂמְלָה 3:3, מוֹדַע 2:1) get no Write card, since asking for
+    "the word" there would pick one reading. Hints give the sound last, because it nearly spells the answer.
 
 21. **Listening**: each chapter in Read links to Haktuvim (Bible Society in Israel), whose chapter pages have a native
     reader's recording (Steve, 2026-10-23). Link form `https://haktuvim.co.il/study/<OSIS book>.<chapter>`, from Steve.
@@ -101,6 +104,11 @@ since reviews of earlier words stack up before their gaps grow. If that is too m
   nurse, grow up), and that cutting TBESH glosses at the colon lost the Ruth sense of נָחַם ("comfort").
 - Not applied, on purpose: seven of review B's minor gloss suggestions that BDB on Sefaria did not confirm
   (bundle, turn, except for זוּלָה, quiet, eat one's fill, left over, shame).
+- The הוּא/הִיא split (2026-10-23) left one orphan for anyone who had studied before it: the old card
+  `H1931:form:08LeN` (1:3 הִיא) no longer exists, and `H1931:which` now uses 2:20 הוּא. Harmless (review 2, C2-10).
+- The pad fits the ink actually written, not the surface. One consequence: a stroke added on the small pad after
+  writing full screen sits, at full size, beyond the earlier writing, so the next full-screen view shrinks everything
+  a little to keep it all in view.
 - Names keep the lexicon's qamats qatan (נׇעֳמִי); the verse text has the plain qamats sign. Same vowel, two code points.
 
 ## Banked ideas (not started)

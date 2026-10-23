@@ -39,6 +39,7 @@ function shape(s) {
     sessions: s.sessions || {},    // dayKey -> count of reviews
     snapshots: s.snapshots || {},  // dayKey -> {stages, avgInterval}, written at wrap-up
     meetDay: s.meetDay || null,    // today's Meet progress {day, ids, steps, stars}, so stars survive a reload
+    dayStart: s.dayStart || null,  // {day, stages: [[wordId, stage]]} at the day's first session, for the wrap-up
   };
 }
 

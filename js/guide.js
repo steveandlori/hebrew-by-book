@@ -84,7 +84,7 @@ function interleave(...lists) {
 }
 
 // Builds today's guided queue in phases: recall (due), meet (new words as recall + in-verse pairs),
-// deepen (other forms of graduated words; writing the Hebrew of words recalled steadily) and tell apart (Which word? cards for graduated words).
+// deepen (other forms of graduated words; writing the Hebrew of words read in place `writeAfter` times) and tell apart (Which word? cards for graduated words).
 // `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today;
 // `writeAfter` = in-place views that unlock a word's Write the Hebrew card (0: no write cards at all).
 export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random }) {
@@ -177,7 +177,11 @@ export function carryMeet(saved, day, phaseOf) {
   if (!saved || saved.day !== day) return { day, ids: fresh, steps: {}, stars: 0 };
   for (const id of saved.ids) if (phaseOf.has(id)) phaseOf.set(id, 'meet');
   const kept = saved.ids.filter(id => id in saved.steps || phaseOf.has(id));
-  return { day, ids: [...new Set([...kept, ...fresh])], steps: { ...saved.steps }, stars: saved.stars || 0 };
+  const ids = [...new Set([...kept, ...fresh])];
+  // Meet grew since (more new words a day): stars earned stay only as far as the larger round supports.
+  const grew = fresh.some(id => !saved.ids.includes(id));
+  const stars = grew ? Math.min(saved.stars || 0, meetStars(Object.values(saved.steps), ids.length)) : (saved.stars || 0);
+  return { day, ids, steps: { ...saved.steps }, stars };
 }
 
 /* ───────────────────────── hint ladder, nudges, grading ───────────────────────── */
@@ -185,8 +189,9 @@ export function carryMeet(saved, day, phaseOf) {
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.
 //   recall: part of speech (+ transliteration) → the word in one of its verses → first letter of the gloss
 //   ctx/form: the dictionary form → the full parse of this form
-//   write:    part of speech + pronunciation → the first letter (dictionary form asked) or the dictionary form
-//             (the form in the verse asked)
+//   write:    part of speech → the first letter → how the dictionary form sounds (dictionary form asked), or
+//             part of speech → how it sounds → the dictionary form (the form in the verse asked). The sound
+//             nearly spells the answer, so it comes late.
 export function hintLadder(card, { writeTarget = 'lemma' } = {}) {
   const w = card.item;
   switch (card.kind) {
@@ -197,10 +202,9 @@ export function hintLadder(card, { writeTarget = 'lemma' } = {}) {
     ];
     case 'ctx':
     case 'form': return [{ type: 'lemma', item: w.id }, { type: 'parse', token: card.token }];
-    case 'write': return [
-      { type: 'pos', pos: w.pos, tr: w.tr },
-      writeTarget === 'verse' ? { type: 'lemma', item: w.id } : { type: 'firstLetter', item: w.id },
-    ];
+    case 'write': return writeTarget === 'verse'
+      ? [{ type: 'pos', pos: w.pos }, { type: 'sound', tr: w.tr }, { type: 'lemma', item: w.id }]
+      : [{ type: 'pos', pos: w.pos }, { type: 'firstLetter', item: w.id }, { type: 'sound', tr: w.tr }];
     default: return [];
   }
 }

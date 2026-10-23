@@ -50,9 +50,11 @@ test('pruneSnapshots drops entries older than keepDays', () => {
   assert.deepEqual(Object.keys(pruneSnapshots(snaps, '2026-10-20', 60)), ['2026-10-19', '2026-10-20']);
 });
 
-test('write ladder: part of speech + sound, then the first letter or the dictionary form', () => {
-  assert.deepEqual(hintLadder(card('write', { token: 't1' })).map(h => h.type), ['pos', 'firstLetter']);
-  assert.deepEqual(hintLadder(card('write', { token: 't1' }), { writeTarget: 'verse' }).map(h => h.type), ['pos', 'lemma']);
+test('write ladder gives the sound late: it nearly spells the answer', () => {
+  const lemma = hintLadder(card('write', { token: 't1' }));
+  assert.deepEqual(lemma.map(h => h.type), ['pos', 'firstLetter', 'sound']);
+  assert.equal(lemma[0].tr, undefined);   // part of speech only, no pronunciation
+  assert.deepEqual(hintLadder(card('write', { token: 't1' }), { writeTarget: 'verse' }).map(h => h.type), ['pos', 'sound', 'lemma']);
 });
 
 test('Meet progress: Got it steps, Partly holds, Not yet resets, leaving learning completes', () => {
@@ -95,4 +97,13 @@ test('carryMeet: a same-day rebuild restores Meet ids, steps and stars; a new da
   assert.deepEqual(m.steps, { a: 3, b: 1 });
   const next = carryMeet(saved, 'd2', new Map([['y', 'meet']]));
   assert.deepEqual(next, { day: 'd2', ids: ['y'], steps: {}, stars: 0 });
+});
+
+test('carryMeet: stars earned stay unless Meet grew, then only as far as the larger round supports', () => {
+  const saved = { day: 'd', ids: ['a:recall', 'a:ctx'], steps: { 'a:recall': 3, 'a:ctx': 3 }, stars: 5 };
+  const same = carryMeet(saved, 'd', new Map());
+  assert.equal(same.stars, 5);
+  const grown = carryMeet(saved, 'd', new Map([['b:recall', 'meet'], ['b:ctx', 'meet']]));
+  assert.equal(grown.stars, meetStars(Object.values(saved.steps), 4));   // 6 of 12 recalls: 2 stars
+  assert.equal(grown.stars, 2);
 });

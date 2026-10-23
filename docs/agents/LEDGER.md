@@ -40,3 +40,6 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Handoff notes copied to josie-stats/docs/handoff/ (uncommitted there) | Steve → coordinator | done |
 | 2026-10-23 | Board updated with the day; Steve tried Write the Hebrew: "that worked well too" | Steve → coordinator | done |
 | 2026-10-23 | josie-stats handoff: stars kept across reload (carryMeet), screen-reader announcements, forced-colors, CLEAN_RECALLS test, method wording, QA server hygiene | coordinator | done; js 72; Playwright reload mid-Meet keeps 2 stars, reaches 5 |
+| 2026-10-23 | Review 2: code (11 findings, 5 should-fix) + QA (FIX FIRST: F1-F4) | general-purpose ×2 | reports in docs/review/code-2.md, qa-2.md |
+| 2026-10-23 | Fixes: write verse choice + no k/q (C2-1/2, F4), hint order (C2-3), pad fits ink (C2-4, F1), Off mid-card (C2-5, F3), carryMeet growth (C2-7), maqqef (C2-8), writeForm per card (C2-9), keys with pad open (C2-11), day-start stages (F2), comments (C2-6) | coordinator | js 74; Playwright checks of F1/F2/F3/C2-11 |
+| 2026-10-23 | Notes for josie-stats part 2 (pad fit, keys, day-start, carryMeet) copied to its docs/handoff | coordinator | done |

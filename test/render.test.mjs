@@ -107,3 +107,11 @@ test('a blanked word hides its Hebrew and keeps the rest of the verse', () => {
 test('write cards count against the extra allowance', () => {
   assert.equal(allowances(['a:write', 'b:which', 'c:recall'], 10).extra, 8);
 });
+
+test('a blank keeps the maqqef that joins it to the next word, and a list blanks several', () => {
+  const v = ruth.verses.find(x => x.t.some(t => t.j && !t.kq));
+  const t = v.t.find(x => x.j && !x.kq);
+  assert.ok(R.verseHTML(v, { blank: t.id }).includes('<span class="wt"></span></span>־'));
+  const two = v.t.filter(x => !x.kq).slice(0, 2).map(x => x.id);
+  assert.equal((R.verseHTML(v, { blank: two }).match(/class="w blank"/g) || []).length, 2);
+});

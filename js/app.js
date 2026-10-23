@@ -158,17 +158,17 @@ function frontHTML(card) {
     case 'write': {
       const v = verseOfToken(card.token);
       const t = BOOK.tokens.get(card.token);
-      const asVerse = state.settings.writeForm === 'verse';
+      const asVerse = writeForm() === 'verse';
       return `<div class="prompt">Write the missing word in Hebrew: ${asVerse ? 'as it stands in the verse' : 'its dictionary form'}.</div>
         <p class="cue"><b class="en">${esc(t.en || w.gloss)}</b> <span class="muted">${esc(posLabel(w.pos))}</span></p>
         ${asVerse ? '' : `<p class="small muted">Dictionary form: as listed in Words (a verb's Qal perfect “he” form, e.g. ${heb(pointed() ? 'קָטַל' : 'קטל')}; a noun's singular).</p>`}
-        <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, session.revealed ? { highlight: card.token } : { blank: card.token })}`;
+        <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, session.revealed ? { highlight: card.token } : { blank: card.blank ? [card.token, ...card.blank] : card.token })}`;
     }
   }
 }
 
 // What a Write-the-Hebrew card asks for, in the current pointing.
-const writeTarget = card => (state.settings.writeForm === 'verse'
+const writeTarget = card => (writeForm() === 'verse'
   ? { label: 'In the verse', text: tokText(BOOK.tokens.get(card.token)) }
   : { label: 'Dictionary form', text: lemmaText(card.item) });
 
@@ -230,7 +230,13 @@ function startSession() {
   session.counts = { recall: 0, meet: 0, deepen: 0, tell: 0 };
   for (const p of r.phaseOf.values()) session.counts[p]++;
   session.counts.meet = meet.ids.length;
-  session.stagesBefore = stagesByItem(DECK, cardState);
+  // The wrap-up compares with the day's start, kept across a reload (QA found "0 words met" after one).
+  if (state.dayStart && state.dayStart.day === session.day) session.stagesBefore = new Map(state.dayStart.stages);
+  else {
+    session.stagesBefore = stagesByItem(DECK, cardState);
+    state.dayStart = { day: session.day, stages: [...session.stagesBefore] };
+    persist();
+  }
   session.total = r.queue.length;
   renderStudy();
 }
@@ -258,7 +264,11 @@ function dropPad() {
   if (session.pad) { session.pad.destroy(); session.pad = null; }
 }
 
+// A Write card keeps the form it was first shown with, even if the setting changes mid-card.
+const writeForm = () => session.writeForm || state.settings.writeForm;
+
 function nextCard() {
+  session.writeForm = state.settings.writeForm;
   session.revealed = false; session.choices = null; session.picked = null;
   session.hints = 0; session.sketch = null;
   dropPad();
@@ -280,7 +290,7 @@ function onGrade(rating) {
     session.meetSteps.set(card.id, step);
     if (state.meetDay) state.meetDay.steps[card.id] = step;
   }
-  if (inSteps) {
+  if (inSteps && writeOn(card)) {
     const pos = Math.min(session.queue.length, 3 + Math.floor(Math.random() * 3));
     session.queue.splice(pos, 0, card);
     session.total++;
@@ -343,7 +353,7 @@ function phaseStripHTML() {
 function padTitle(card) {
   const w = card.item;
   if (card.kind === 'recall') return `Meaning of ${lemmaText(w)}`;
-  if (card.kind === 'write') return state.settings.writeForm === 'verse' ? 'Write the word as in the verse' : 'Write the dictionary form';
+  if (card.kind === 'write') return writeForm() === 'verse' ? 'Write the word as in the verse' : 'Write the dictionary form';
   const v = verseOfToken(card.token);
   return `The highlighted word in ${refLabel(v.ref)}`;
 }
@@ -356,6 +366,7 @@ function hintHTML(h) {
     case 'initial': return `<li>${lbl('The meaning starts with')}${esc(h.text)}</li>`;
     case 'lemma': { const l = BOOK.lexemes.get(h.item); return `<li>${lbl('Dictionary form')}${heb(lemmaText(l), 'mid')} <span class="muted">${esc(posLabel(l.pos))}</span></li>`; }
     case 'parse': { const t = BOOK.tokens.get(h.token); return `<li>${lbl('This form')}${esc(t.parse)}</li>`; }
+    case 'sound': return `<li>${lbl('The dictionary form sounds like')}${esc(h.tr)}</li>`;
     case 'firstLetter': { const l = BOOK.lexemes.get(h.item); return `<li>${lbl('It starts with')}${heb(plain(l.he).replace(/־/g, '').charAt(0), 'mid')}</li>`; }
     default: return '';
   }
@@ -386,7 +397,7 @@ function renderStudy() {
   const isWhich = card.kind === 'which';
   const fresh = isNew(card.id);
   const isWrite = card.kind === 'write';
-  const ladder = isWhich ? [] : hintLadder(card, { writeTarget: state.settings.writeForm });
+  const ladder = isWhich ? [] : hintLadder(card, { writeTarget: writeForm() });
   const phase = session.phaseOf ? session.phaseOf.get(card.id) : null;
 
   let body = `<div class="session-head"><h1>Today</h1><span class="muted">${remaining} left</span><span class="spacer"></span>${fresh ? '<span class="muted">new card</span>' : ''}</div>
@@ -493,7 +504,7 @@ function renderWrapUp() {
   state.snapshots[day] = buildSnapshot(countStages(after), DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id)));
   state.snapshots = pruneSnapshots(state.snapshots, day);
   persist();
-  const next = DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id).due).sort((a, b) => a - b)[0];
+  const next = DECK.filter(c => writeOn(c) && !isNew(c.id)).map(c => cardState(c.id).due).sort((a, b) => a - b)[0];
   const names = ids => ids.length ? `<ul class="moved">${ids.map(id => { const l = BOOK.lexemes.get(id); return `<li>${heb(lemmaText(l))} ${esc(l.gloss)}</li>`; }).join('')}</ul>` : '';
   const tile = (n, label, ids) => `<div class="stat"><b>${n}</b><span>${label}</span>${names(ids)}</div>`;
   const meetLine = session.counts && session.counts.meet ? `<p class="meet-stars">Meet ${starsHTML(meetStarsNow())}</p>` : '';
@@ -507,6 +518,7 @@ function renderWrapUp() {
 
 function onKey(e) {
   if (route !== 'today') return;
+  if (session.pad && session.pad.isExpanded()) return; // the full-screen pad is for writing; Escape closes it
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target && /^(input|select|textarea|button|a)$/i.test(e.target.tagName)) return;
   const card = session.current;
@@ -808,7 +820,16 @@ function renderSettings() {
   view.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { s.hebSize = b.dataset.hs; applyHebSize(); save(); renderSettings(); });
   view.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { s.gradeButtons = Number(b.dataset.gb); save(); renderSettings(); });
   view.querySelectorAll('[data-pad]').forEach(b => b.onclick = () => { s.showPad = b.dataset.pad === '1'; save(); renderSettings(); });
-  $('#wa').onchange = e => { s.writeAfter = Number(e.target.value); if (!s.writeAfter) session.queue = session.queue.filter(writeOn); save(); };
+  $('#wa').onchange = e => {
+    s.writeAfter = Number(e.target.value);
+    if (!s.writeAfter) {
+      const before = session.queue.length;
+      session.queue = session.queue.filter(writeOn);
+      session.total -= before - session.queue.length;
+      if (session.current && !writeOn(session.current)) { session.current = null; session.total--; }
+    }
+    save();
+  };
   view.querySelectorAll('[data-wf]').forEach(b => b.onclick = () => { s.writeForm = b.dataset.wf; save(); renderSettings(); });
   $('#export').onclick = () => {
     const blob = new Blob([store.exportState(state)], { type: 'application/json' });
