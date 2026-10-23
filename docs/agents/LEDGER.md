@@ -24,3 +24,11 @@ Next: fix QA findings → publish (repo + Pages) → update board, STATUS → re
 | 2026-10-22 | Publish | coordinator | pushed to main; Pages |
 
 Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa there(ward), comparative מִן note.
+
+## Steve's second feedback (2026-10-23)
+
+| Date | Step | Who | State |
+| --- | --- | --- | --- |
+| 2026-10-23 | הוּא/הִיא split (`_splits`, H1931f) + notes | coordinator | done, test added (50 py) |
+| 2026-10-23 | Pad: vector ink redrawn per surface (no compounding shrink) | coordinator | done, Playwright round trip ×3 + hint: full-screen ink same size each time |
+| 2026-10-23 | Feature ideas: Meet stars; write-the-Hebrew cards | Steve | proposals sent; awaiting his pick |

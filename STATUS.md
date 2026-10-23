@@ -63,6 +63,10 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 17. **Look-alikes**: words with the same consonants elsewhere in the book are listed automatically under "Don't
     confuse"; words outside the book (אֵל "God" for אֶל) need a reviewed note.
 
+18. **Two words under one number are split for learning** (Steve, 2026-10-23: "as a rule we should separate them").
+    `_splits` in the overrides moves tokens by parse to a new key; so far only הִיא "she" (H1931f) out of הוּא H1931.
+    The other pronouns already had separate entries (אַתָּה/אַתְּ/אַתֶּם, זֶה/זֹאת).
+
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 
 Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,

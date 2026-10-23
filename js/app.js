@@ -329,7 +329,7 @@ function renderStudy() {
     let top = isWhich ? '' : `<p class="aloud">Read the Hebrew aloud once.</p>`;
     if (line) top += `<p class="reveal-line">${esc(line)}</p>`;
     const compare = session.sketch
-      ? `<div class="compare"><figure><figcaption>Your answer</figcaption><img src="${session.sketch}" alt="Your handwritten answer"></figure><figure><figcaption>The meaning</figcaption><p class="gloss-big">${esc(card.item.gloss)}</p></figure></div>`
+      ? `<div class="compare"><figure><figcaption>Your answer</figcaption><img src="${session.sketch.url}" alt="Your handwritten answer"></figure><figure><figcaption>The meaning</figcaption><p class="gloss-big">${esc(card.item.gloss)}</p></figure></div>`
       : '';
     body += `<div class="answer">${top}${compare}${backHTML(card)}</div>`;
 
@@ -361,12 +361,12 @@ function renderStudy() {
   body += '</section>';
   view.innerHTML = body;
 
-  const captureSketch = () => { if (session.pad) { session.sketch = session.pad.hasInk() ? session.pad.toDataURL() : null; dropPad(); } };
+  const captureSketch = () => { if (session.pad) { session.sketch = session.pad.hasInk() ? { url: session.pad.toDataURL(), ink: session.pad.snapshot() } : null; dropPad(); } };
   const doReveal = () => { captureSketch(); session.revealed = true; renderStudy(); };
   const host = $('#padhost');
   if (host) {
     session.pad = createPad(host, { title: padTitle(card), onAnswer: doReveal });
-    if (session.sketch) session.pad.restore(session.sketch);
+    if (session.sketch) session.pad.restore(session.sketch.ink);
   }
 
   const reveal = $('#reveal');

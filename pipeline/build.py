@@ -67,7 +67,9 @@ def load_overrides(book: str) -> dict:
     _stems {"<key>": {"<stem code>": gloss, why, source}} (a verb's sense in a stem other than Qal),
     _number_glosses {"<key>": {s, p, why, source}} (singular and plural renderings),
     _participles {"<key>": {s, p, why, source}} (a verb whose participle is used as a noun),
-    _renderings {"<token id>": {en, why, source}} and _notes {"<key>": {note, why, source}} (look-alikes)."""
+    _renderings {"<token id>": {en, why, source}}, _notes {"<key>": {note, why, source}} (look-alikes) and
+    _splits {"<new key>": {from, morph, he, tr, gloss, def, why, source}} (one Strong's number that is two
+    words to learn, e.g. הִיא "she" filed under הוּא H1931: tokens of `from` whose parse starts with `morph`)."""
     path = ROOT / "pipeline" / "overrides" / f"{book.lower()}.json"
     ov = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     for k, o in ov.items():
@@ -89,12 +91,12 @@ def build(book: str) -> dict:
     kq_notes = overrides.pop("_kq_notes", {})
     token_glosses = overrides.pop("_token_glosses", {})
     sections = {name: {k: o for k, o in overrides.pop(name, {}).items() if not k.startswith("_")}
-                for name in ("_stems", "_number_glosses", "_participles", "_renderings", "_notes")}
+                for name in ("_stems", "_number_glosses", "_participles", "_renderings", "_notes", "_splits")}
     for name, entries in sections.items():
         for k, o in entries.items():
             if not o.get("why") or not o.get("source"):
                 raise SystemExit(f"{name} {k} needs why and source")
-    stems, number_glosses = sections["_stems"], sections["_number_glosses"]
+    stems, number_glosses, splits = sections["_stems"], sections["_number_glosses"], sections["_splits"]
     stem_glosses = {k: {c: g for c, g in o.items() if c not in ("why", "source")} for k, o in stems.items()}
     overrides = {k: o for k, o in overrides.items() if not k.startswith("_")}
 
@@ -110,6 +112,18 @@ def build(book: str) -> dict:
                 s["x"] = merges[s["x"]]
         t["lex"] = next(s["x"] for s in t["segs"] if s["r"] == "main")
 
+    # Splits: one Strong's number that is two words to learn is separated by its parse.
+    for k, o in splits.items():
+        moved = 0
+        for t in tokens:
+            for s in t["segs"]:
+                if s["x"] == o["from"] and s["m"].startswith(o["morph"]):
+                    s["x"] = k
+                    moved += 1
+            t["lex"] = next(s["x"] for s in t["segs"] if s["r"] == "main")
+        if not moved:
+            errors.append(f"_splits {k}: no {o['from']} token parsed {o['morph']}")
+
     lexemes: dict[str, dict] = {}
     # OSHB decides which lexemes are names: proper nouns (Np) and gentilics (Ng, Ag).
     name_keys = {s["x"] for t in tokens for s in t["segs"] if s["r"] == "main" and s["m"][:2] in ("Np", "Ng", "Ag")}
@@ -118,7 +132,9 @@ def build(book: str) -> dict:
             k = s["x"]
             if k in lexemes:
                 continue
-            rows = tbesh.get(tbesh_key(k))
+            split = splits.get(k)
+            base = split["from"] if split else k
+            rows = tbesh.get(tbesh_key(base))
             if not rows:
                 errors.append(f"{k}: no TBESH row")
                 continue
@@ -129,7 +145,7 @@ def build(book: str) -> dict:
             if is_affix(k):
                 rec.update({"affix": 1, "he": tb["he"].replace("/", "")})
             else:
-                lid = aug.get(aug_of(k))
+                lid = aug.get(aug_of(base))
                 e = li.get(lid) if lid else None
                 if e is None:
                     errors.append(f"{k}: no Lexical Index entry")
@@ -142,6 +158,10 @@ def build(book: str) -> dict:
                             "def": e["def"], "bdb": {"id": e["bdb"], "page": pages[e["bdb"]]}})
                 if k in name_keys:
                     rec["name"] = 1
+            if split:
+                rec.update({"he": split["he"], "cons": consonantal(split["he"]), "tr": split["tr"], "def": split["def"],
+                            "gloss": split["gloss"], "glossNote": {"was": tb["gloss"], "why": split["why"], "source": split["source"]},
+                            "splitFrom": split["from"]})
             o = overrides.get(k)
             if o:
                 if "gloss" in o:

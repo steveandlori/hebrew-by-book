@@ -289,3 +289,15 @@ def test_renderings_review_fixes(data):
     assert "as their (f) coming (in)" in _en(data, "1.19")
     assert "today" in _en(data, "4.9")
     assert "it was bitter" in _en(data, "1.13")           # per-word override: impersonal
+
+
+def test_he_and_she_are_separate_words(data):
+    # Strong's files הִיא under הוּא H1931; for learning they are two words (Steve, 2026-10-23).
+    L = data["lexemes"]
+    assert L["H1931"]["he"] == "הוּא" and L["H1931f"]["he"] == "הִיא"
+    assert (L["H1931"]["n"], L["H1931f"]["n"]) == (6, 5)
+    for v in data["verses"]:
+        for t in v["t"]:
+            for s in t["segs"]:
+                if s["x"] in ("H1931", "H1931f"):
+                    assert s["m"][3] == ("f" if s["x"] == "H1931f" else "m"), t["id"]

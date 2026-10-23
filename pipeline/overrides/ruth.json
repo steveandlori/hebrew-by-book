@@ -1,6 +1,7 @@
 {
   "_comment": "Corrections to the generated data for Ruth. Every entry needs why and source; the build refuses entries without them. Sources are BDB (checked on Sefaria's BDB, 2026-10-22, by content review B or the coordinator) unless stated. See docs/review/content-A.md and content-B.md.",
 
+  "H1931": {"gloss": "he; it", "why": "Steve (2026-10-23): learn הוּא 'he' and הִיא 'she' as two words; Strong's/OSHB file both under H1931, and הִיא is now split out as H1931f", "source": "BDB p. 214 (הוּא, fem. הִיא)"},
   "H4843": {"gloss": "to be bitter", "why": "Ruth uses the sense 'be bitter' (1:13) and Hiphil 'make bitter' (1:20), the Naomi/Mara wordplay; 'provoke' is another sense", "source": "BDB p. 600, Ru 1:13, 20"},
   "H5162": {"gloss": "to comfort; be sorry", "why": "Ruth 2:13 is Piel 'comfort'; TBESH's 'to be sorry: comfort' was cut to its first half", "source": "BDB p. 636 (Piel), Ru 2:13"},
   "H3426": {"gloss": "there is, there are", "why": "'there' is a different word (שָׁם)", "source": "BDB p. 441, Ru 1:12, 3:12"},
@@ -128,7 +129,13 @@
     "H4191": {"s": "dead one", "p": "dead ones", "why": "the participle מֵת is 'dead' (1:8, 2:20, 4:5, 10); 'dying' misreads it", "source": "BDB p. 559 (ptc.)"},
     "H539": {"s": "nurse", "p": "nurses", "why": "אֹמֶנֶת 'foster-mother, nurse' (4:16)", "source": "BDB p. 52, Ru 4:16"}
   },
+  "_splits": {
+    "_comment": "One Strong's number that is two words to learn. Tokens of `from` whose OSHB parse starts with `morph` move to the new key.",
+    "H1931f": {"from": "H1931", "morph": "Pp3f", "he": "הִיא", "tr": "hîʾ", "gloss": "she; it", "def": "she", "why": "Steve (2026-10-23): 'he' and 'she' are distinct words and should be learned separately; Strong's numbering files both under H1931", "source": "BDB p. 214 (הוּא, fem. הִיא); Ru 1:3, 6, 18, 2:6, 4:15"}
+  },
   "_notes": {
+    "H1931": {"note": "Not הִיא 'she' (yod, hireq). Only the middle letter differs: הוּא / הִיא.", "why": "one letter apart, and filed under one Strong's number", "source": "BDB p. 214"},
+    "H1931f": {"note": "Not הוּא 'he' (vav, shureq). In the Torah הִיא is usually written הוא and read הִיא, a standing ketiv/qere.", "why": "one letter apart; the Torah spelling makes the pair easy to blur", "source": "BDB p. 214; GKC §32l"},
     "H413": {"note": "Not אֵל 'God' (with tsere; not in Ruth) and not אַל 'not' (with patach). אֶל 'to, toward' has segol and is usually joined to the next word by maqqef: אֶל־.", "why": "the same consonants as two common words; easy to misread", "source": "BDB p. 39 (אֶל), p. 42 (אֵל), p. 39 (אַל)"},
     "H408": {"note": "Not אֶל 'to, toward' (segol). אַל 'not' (patach) negates a wish or command: אַל־תִּקְרֶאנָה 'do not call' (1:20).", "why": "the same consonants as אֶל", "source": "BDB p. 39, Ru 1:20"},
     "H376": {"note": "Not אֵשׁ 'fire' (tsere, no yod; very common).", "why": "proposed in docs/review/renderings-1.md section 3; meanings and pages checked in BDB", "source": "BDB p. 35 (אִישׁ), p. 77 (אֵשׁ)"},
