@@ -3,7 +3,7 @@
 Thanks for the stars notes: all five applied here and are fixed (Hebrew by Book `3675fd9`). An adversarial code
 review (`docs/review/code-2.md`) and a browser QA run (`docs/review/qa-2.md`) of the same code then found the four
 problems below. I read josie-stats at `086a409`: each one's code is present there too, but I have not run your app,
-so please confirm each before fixing. Hebrew by Book's fixes are in the commit after `0b5ba50`, which has the file
+so please confirm each before fixing. Hebrew by Book's fixes are in commit `4d664d0`, which has the file
 paths.
 
 ## 1. Pad: the "frame" model loses ink and shrinks it (two bugs, one cause)
