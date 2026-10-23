@@ -1,14 +1,14 @@
 # Hebrew by Book: status
 
-Last updated: 2026-10-22. The board (`board.html`) is the one-stop view; this file is the narrative behind it.
+Last updated: 2026-10-23. The board (`board.html`) is the one-stop view; this file is the narrative behind it.
 
 ## Where things are
 
 | Item | State |
 | --- | --- |
-| App | First slice for Ruth built: Today (guided loop), Read, Written and read, Words, Names, Progress, How it works, Settings. Tested in Chromium at phone width. |
-| Data | `data/ruth.js`, built by `python pipeline/build.py Ruth` from pinned, checksummed sources plus `pipeline/overrides/ruth.json` (about 60 reviewed corrections, each citing BDB): 85 verses, 1,306 tokens, 286 vocabulary words, 30 names, 13 written/read places. |
-| Tests | `python -m pytest pipeline/tests -q` (39), `node --test test/*.test.mjs` (58), `node test/board.check.mjs`, `python test/linkcheck.py` (90/90 live). CI runs all but the link check on every push. |
+| App | Ruth: Today (guided loop with Meet stars and Write the Hebrew cards), Read (English per word, look-alikes, Haktuvim audio link), Written and read, Words, Names, Progress, How it works, Settings. Tested in Chromium at phone width. |
+| Data | `data/ruth.js`, built by `python pipeline/build.py Ruth` from pinned, checksummed sources plus `pipeline/overrides/ruth.json` (reviewed corrections, each citing BDB): 85 verses, 1,306 tokens, 287 vocabulary words, 30 names, 13 written/read places. |
+| Tests | `python -m pytest pipeline/tests -q` (50), `node --test test/*.test.mjs` (68), `node test/board.check.mjs`, `python test/linkcheck.py` (90/90 live). CI runs all but the link check on every push. |
 | Review | Done 2026-10-22: content review A (cited sources), content review B (BDB via Sefaria, GKC; other model), fresh code review, then confirmation passes by A and B, then QA with a written plan (13 scenarios, 7-day simulation): verdict SHIP. Reports in `docs/review/`. |
 | Publishing | https://github.com/steveandlori/hebrew-by-book (public), Pages from `main` root: https://steveandlori.github.io/hebrew-by-book/ |
 
