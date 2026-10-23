@@ -37,3 +37,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Write unlock threshold as a setting (1/2/3/5/Off, default 2) | Steve → coordinator | done |
 | 2026-10-23 | Haktuvim chapter link (audio) in Read | Steve → coordinator | done; Ruth 3 checked in browser |
 | 2026-10-23 | Meet stars bunched at the end (counted finished cards); now count clean recalls | Steve → coordinator | done |
+| 2026-10-23 | Handoff notes copied to josie-stats/docs/handoff/ (uncommitted there) | Steve → coordinator | done |
