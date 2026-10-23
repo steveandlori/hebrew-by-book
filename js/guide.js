@@ -145,6 +145,28 @@ export function allowances(introducedToday, newPerDay) {
   return { words: Math.max(0, newPerDay - words), extra: Math.max(0, newPerDay - extra) };
 }
 
+/* ───────────────────────── Meet stars ───────────────────────── */
+
+// A new card leaves the session after this many clean recalls (the scheduler's three learning steps).
+export const CLEAN_RECALLS = 3;
+
+// One Meet card's progress after a grade: Got it or Easy moves it a step, Not yet sends it back to the start
+// (as the scheduler does), Partly holds it; a card that has left its learning steps is complete.
+export function meetStep(prev, rating, graduated) {
+  if (graduated) return CLEAN_RECALLS;
+  if (rating <= 1) return 0;
+  return rating >= 3 ? Math.min(prev + 1, CLEAN_RECALLS - 1) : prev;
+}
+
+// Stars (0-5) for the Meet stretch, counted in clean recalls rather than finished cards: cards finish
+// together near the end of Meet, so counting finished cards bunched the stars there (Steve, 2026-10-23).
+export function meetStars(steps, totalCards) {
+  if (!totalCards) return 0;
+  let done = 0;
+  for (const s of steps) done += s;
+  return Math.min(5, Math.floor(5 * done / (CLEAN_RECALLS * totalCards)));
+}
+
 /* ───────────────────────── hint ladder, nudges, grading ───────────────────────── */
 
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.

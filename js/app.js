@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, meetStep, meetStars, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -213,14 +213,14 @@ function backHTML(card) {
 const session = {
   queue: [], done: 0, total: 0, mode: 'today', revealed: false, current: null, choices: null, picked: null,
   hints: 0, pad: null, sketch: null, shown: 0, phaseOf: null, counts: null, stagesBefore: null,
-  meetStars: 0, whichStreak: 0,
+  meetStars: 0, meetSteps: new Map(), whichStreak: 0,
 };
 
 function startSession() {
   session.mode = 'today';
   session.day = store.todayKey();
   session.done = 0; session.revealed = false; session.current = null;
-  session.meetStars = 0; session.whichStreak = 0;
+  session.meetStars = 0; session.meetSteps = new Map(); session.whichStreak = 0;
   const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance(), writeAfter: state.settings.writeAfter });
   session.queue = r.queue; session.phaseOf = r.phaseOf; session.counts = r.counts;
   session.stagesBefore = stagesByItem(DECK, cardState);
@@ -244,7 +244,7 @@ function studyAhead(n = 10) {
 // Forget the in-memory session (after import or Start over) so Today rebuilds from the new state.
 function resetSession() {
   dropPad();
-  Object.assign(session, { queue: [], done: 0, total: 0, revealed: false, current: null, choices: null, picked: null, hints: 0, sketch: null, phaseOf: null, counts: null, stagesBefore: null, day: null, meetStars: 0, whichStreak: 0 });
+  Object.assign(session, { queue: [], done: 0, total: 0, revealed: false, current: null, choices: null, picked: null, hints: 0, sketch: null, phaseOf: null, counts: null, stagesBefore: null, day: null, meetStars: 0, meetSteps: new Map(), whichStreak: 0 });
 }
 
 function dropPad() {
@@ -267,7 +267,11 @@ function onGrade(rating) {
   invalidateStages();
   session.done++;
   // Cards still in learning come back later in this same session.
-  if (updated.state === State.Learning || updated.state === State.Relearning) {
+  const inSteps = updated.state === State.Learning || updated.state === State.Relearning;
+  if (session.phaseOf && session.phaseOf.get(card.id) === 'meet') {
+    session.meetSteps.set(card.id, meetStep(session.meetSteps.get(card.id) || 0, rating, !inSteps));
+  }
+  if (inSteps) {
     const pos = Math.min(session.queue.length, 3 + Math.floor(Math.random() * 3));
     session.queue.splice(pos, 0, card);
     session.total++;
@@ -295,16 +299,10 @@ function queueWriteCard(item) {
   if (session.phaseOf) { session.phaseOf.set(wc.id, 'deepen'); session.counts.deepen++; }
 }
 
-// Meet is the long stretch of a day, so it is marked in fifths: a star for each fifth of the new-word
-// cards cleared (a card in learning steps comes back and is not cleared yet). Stars follow progress,
-// not "Got it" streaks, so they never reward generous self-grading.
-function meetLeft() {
-  const pending = session.current ? [session.current, ...session.queue] : session.queue;
-  return new Set(pending.filter(c => session.phaseOf && session.phaseOf.get(c.id) === 'meet').map(c => c.id)).size;
-}
+// Meet is the long stretch of a day, so it is marked in fifths: a star for each fifth of the clean recalls
+// its cards need (three each). A star once earned stays, even if a Not yet sets a card back.
 function meetStarsNow() {
-  const total = session.counts ? session.counts.meet : 0;
-  return total ? Math.floor(5 * (total - meetLeft()) / total) : 0;
+  return Math.max(session.meetStars, meetStars(session.meetSteps.values(), session.counts ? session.counts.meet : 0));
 }
 const starsHTML = n => `<span class="stars" role="img" aria-label="${n} of 5 stars">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}">★</i>`).join('')}</span>`;
 

@@ -67,9 +67,9 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     `_splits` in the overrides moves tokens by parse to a new key; so far only הִיא "she" (H1931f) out of הוּא H1931.
     The other pronouns already had separate entries (אַתָּה/אַתְּ/אַתֶּם, זֶה/זֹאת).
 
-19. **Meet stars** (Steve, 2026-10-23): a gold star at each fifth of the Meet cards cleared, banked to five, shown on
-    the Meet chip and at wrap-up. Stars follow progress, not "Got it" streaks, so they never reward generous
-    self-grading. A spark at every 3 right in a row on Which word?, which the app grades.
+19. **Meet stars** (Steve, 2026-10-23): a gold star at each fifth of the clean recalls the Meet cards need (three
+    each; Not yet sets a card back, as the scheduler does), banked to five, shown on the Meet chip and at wrap-up.
+    First version counted finished cards, which finish together near the end, so the stars bunched (Steve noticed). A spark at every 3 right in a row on Which word?, which the app grades.
 20. **Write the Hebrew** (Steve, 2026-10-23): one card per word; the word is blanked in a verse, with its English
     and part of speech as the cue; the pad is always shown. It asks for the dictionary form by default (Settings: or
     the form in the verse) and the answer shows both. It enters with form and Which word? cards (same daily cap)
