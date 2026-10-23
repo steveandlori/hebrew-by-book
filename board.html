@@ -58,7 +58,7 @@ const BOARD = {
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '120' },
+      { label: 'tests passing', value: '124' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -100,6 +100,8 @@ const BOARD = {
         { t: 'Read: “Listen to chapter N on Haktuvim” (native reader’s recording)', s: 'done' },
         { t: 'README rewritten (what it does, layout, development, data overrides); MIT License © Steve Thomas for the code', s: 'done' },
         { t: 'Notes for josie-stats (pad bug it shares; Meet stars and the bunching lesson) copied to its docs/handoff/', s: 'done' },
+        { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
+        { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
       ] },
     { id: 'm3', title: 'More books', status: 'later',
       summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
@@ -128,6 +130,8 @@ const BOARD = {
       steps: 'Read → "Written and read: 13 places". Each place hides both parses until you open it. Tell me if any wording takes a side.' },
   ],
   docs: [
+    { title: 'Review 2: code', href: 'docs/review/code-2.md', blurb: 'Adversarial review of the 2026-10-23 changes: 11 findings, then a confirmation pass (all fixed or accepted; 3 minor follow-ups fixed).', date: '2026-10-23' },
+    { title: 'Review 2: QA', href: 'docs/review/qa-2.md', blurb: 'Written test plan run in a real browser at phone and desktop width: FIX FIRST, then SHIP on the confirmation pass.', date: '2026-10-23' },
     { title: 'README', href: 'README.md', blurb: 'What the app does, repository layout, how to build and test, how corrections and new books work, sources and licences.', date: '2026-10-23' },
     { title: 'Notes for josie-stats', href: 'docs/handoff/to-josie-stats-2026-10-23.md', blurb: 'The pad shrink bug both projects had and its fix; Meet stars and why counting finished cards bunched them. Copied to josie-stats/docs/handoff/.', date: '2026-10-23' },
     { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-23' },
