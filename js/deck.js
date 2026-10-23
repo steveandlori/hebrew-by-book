@@ -6,8 +6,10 @@
 //   ctx     a verse with one occurrence highlighted → meaning?   (meet)
 //   form    up to two other spellings of it in the book          (deepen, once graduated)
 //   which   a verse occurrence → pick the gloss among look-alikes (tell apart, once graduated)
+//   write   a verse with the word blanked + its English → write the Hebrew on the pad (deepen, once recall
+//           is a few days stable; producing a word is harder than recognising it)
 
-export const KIND_LABEL = { recall: 'Word → meaning', ctx: 'In its verse', form: 'Another form', which: 'Which word?' };
+export const KIND_LABEL = { recall: 'Word → meaning', ctx: 'In its verse', form: 'Another form', which: 'Which word?', write: 'Write the Hebrew' };
 const MAX_FORM_CARDS = 2;
 
 export function plain(s) {
@@ -91,6 +93,7 @@ export function buildDeck(book) {
       cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id });
       forms++;
     }
+    cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', token: occ[Math.min(2, occ.length - 1)].id });
     const whichTok = occ[1] || occ[0];
     const distractors = distractorsFor(book, lex);
     if (distractors.length === 3) cards.push({ ...base, id: `${lex.id}:which`, kind: 'which', token: whichTok.id, distractors: distractors.map(d => d.id) });

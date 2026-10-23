@@ -153,8 +153,22 @@ function frontHTML(card) {
       return `<div class="prompt">Which dictionary word is the highlighted form?</div>
         <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, { highlight: card.token })}`;
     }
+    case 'write': {
+      const v = verseOfToken(card.token);
+      const t = BOOK.tokens.get(card.token);
+      const asVerse = state.settings.writeForm === 'verse';
+      return `<div class="prompt">Write the missing word in Hebrew: ${asVerse ? 'as it stands in the verse' : 'its dictionary form'}.</div>
+        <p class="cue"><b class="en">${esc(t.en || w.gloss)}</b> <span class="muted">${esc(posLabel(w.pos))}</span></p>
+        ${asVerse ? '' : `<p class="small muted">Dictionary form: as listed in Words (a verb's Qal perfect “he” form, e.g. ${heb(pointed() ? 'קָטַל' : 'קטל')}; a noun's singular).</p>`}
+        <div class="vref muted">${esc(refLabel(v.ref))}</div>${verseHTML(v, session.revealed ? { highlight: card.token } : { blank: card.token })}`;
+    }
   }
 }
+
+// What a Write-the-Hebrew card asks for, in the current pointing.
+const writeTarget = card => (state.settings.writeForm === 'verse'
+  ? { label: 'In the verse', text: tokText(BOOK.tokens.get(card.token)) }
+  : { label: 'Dictionary form', text: lemmaText(card.item) });
 
 function formsListHTML(l, max = 8) {
   const forms = formsOf(BOOK, l);
@@ -176,6 +190,10 @@ function backHTML(card) {
   switch (card.kind) {
     case 'recall':
       return `${wordSummaryHTML(w)}${lookalikeHTML(w)}${glossNote(w)}<h3>Its forms in ${esc(BOOK_NAME)}</h3>${formsListHTML(w, 6)}${sourceLine()}`;
+    case 'write': {
+      const t = BOOK.tokens.get(card.token);
+      return `<h3>Dictionary form</h3>${wordSummaryHTML(w)}<h3>In ${esc(refLabel(verseOfToken(card.token).ref))}</h3>${formHTML(t)}${lookalikeHTML(w)}${sourceLine()}`;
+    }
     case 'ctx':
     case 'form':
     case 'which': {
@@ -193,12 +211,14 @@ function backHTML(card) {
 const session = {
   queue: [], done: 0, total: 0, mode: 'today', revealed: false, current: null, choices: null, picked: null,
   hints: 0, pad: null, sketch: null, shown: 0, phaseOf: null, counts: null, stagesBefore: null,
+  meetStars: 0, whichStreak: 0,
 };
 
 function startSession() {
   session.mode = 'today';
   session.day = store.todayKey();
   session.done = 0; session.revealed = false; session.current = null;
+  session.meetStars = 0; session.whichStreak = 0;
   const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance() });
   session.queue = r.queue; session.phaseOf = r.phaseOf; session.counts = r.counts;
   session.stagesBefore = stagesByItem(DECK, cardState);
@@ -219,7 +239,7 @@ function studyAhead(n = 10) {
 // Forget the in-memory session (after import or Start over) so Today rebuilds from the new state.
 function resetSession() {
   dropPad();
-  Object.assign(session, { queue: [], done: 0, total: 0, revealed: false, current: null, choices: null, picked: null, hints: 0, sketch: null, phaseOf: null, counts: null, stagesBefore: null, day: null });
+  Object.assign(session, { queue: [], done: 0, total: 0, revealed: false, current: null, choices: null, picked: null, hints: 0, sketch: null, phaseOf: null, counts: null, stagesBefore: null, day: null, meetStars: 0, whichStreak: 0 });
 }
 
 function dropPad() {
@@ -248,6 +268,34 @@ function onGrade(rating) {
     session.total++;
   }
   nextCard();
+  const stars = meetStarsNow();
+  if (stars > session.meetStars) {
+    session.meetStars = stars;
+    celebrate(stars >= 5 ? 'Meet complete ★★★★★' : `Meet: ${stars} of 5 ★`, stars >= 5 ? 'full' : '');
+  }
+}
+
+// Meet is the long stretch of a day, so it is marked in fifths: a star for each fifth of the new-word
+// cards cleared (a card in learning steps comes back and is not cleared yet). Stars follow progress,
+// not "Got it" streaks, so they never reward generous self-grading.
+function meetLeft() {
+  const pending = session.current ? [session.current, ...session.queue] : session.queue;
+  return new Set(pending.filter(c => session.phaseOf && session.phaseOf.get(c.id) === 'meet').map(c => c.id)).size;
+}
+function meetStarsNow() {
+  const total = session.counts ? session.counts.meet : 0;
+  return total ? Math.floor(5 * (total - meetLeft()) / total) : 0;
+}
+const starsHTML = n => `<span class="stars" role="img" aria-label="${n} of 5 stars">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}">★</i>`).join('')}</span>`;
+
+// A star (or a smaller spark) floats up in the middle of the screen and fades.
+function celebrate(text, cls = '') {
+  const el = document.createElement('div');
+  el.className = `burst ${cls}`.trim();
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<span class="burst-star" aria-hidden="true">${cls === 'spark' ? '✦' : '★'}</span><span class="burst-text">${esc(text)}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
 }
 
 function phaseStripHTML() {
@@ -257,12 +305,13 @@ function phaseStripHTML() {
   for (const c of pending) { const p = session.phaseOf.get(c.id); if (p) left[p]++; }
   const cur = session.current && session.phaseOf.get(session.current.id);
   return `<div class="phases" aria-label="Today's phases">${Object.keys(PHASE_LABEL).filter(p => session.counts[p] > 0).map(p =>
-    `<span class="ph${left[p] ? '' : ' is-done'}${cur === p ? ' now' : ''}">${PHASE_LABEL[p]}<b>${left[p]}</b></span>`).join('')}</div>`;
+    `<span class="ph${left[p] ? '' : ' is-done'}${cur === p ? ' now' : ''}">${PHASE_LABEL[p]}<b>${left[p]}</b>${p === 'meet' ? starsHTML(meetStarsNow()) : ''}</span>`).join('')}</div>`;
 }
 
 function padTitle(card) {
   const w = card.item;
   if (card.kind === 'recall') return `Meaning of ${lemmaText(w)}`;
+  if (card.kind === 'write') return state.settings.writeForm === 'verse' ? 'Write the word as in the verse' : 'Write the dictionary form';
   const v = verseOfToken(card.token);
   return `The highlighted word in ${refLabel(v.ref)}`;
 }
@@ -275,6 +324,7 @@ function hintHTML(h) {
     case 'initial': return `<li>${lbl('The meaning starts with')}${esc(h.text)}</li>`;
     case 'lemma': { const l = BOOK.lexemes.get(h.item); return `<li>${lbl('Dictionary form')}${heb(lemmaText(l), 'mid')} <span class="muted">${esc(posLabel(l.pos))}</span></li>`; }
     case 'parse': { const t = BOOK.tokens.get(h.token); return `<li>${lbl('This form')}${esc(t.parse)}</li>`; }
+    case 'firstLetter': { const l = BOOK.lexemes.get(h.item); return `<li>${lbl('It starts with')}${heb(plain(l.he).replace(/־/g, '').charAt(0), 'mid')}</li>`; }
     default: return '';
   }
 }
@@ -303,7 +353,8 @@ function renderStudy() {
   const pct = session.total ? Math.round((session.done / session.total) * 100) : 0;
   const isWhich = card.kind === 'which';
   const fresh = isNew(card.id);
-  const ladder = isWhich ? [] : hintLadder(card);
+  const isWrite = card.kind === 'write';
+  const ladder = isWhich ? [] : hintLadder(card, { writeTarget: state.settings.writeForm });
   const phase = session.phaseOf ? session.phaseOf.get(card.id) : null;
 
   let body = `<div class="session-head"><h1>Today</h1><span class="muted">${remaining} left</span><span class="spacer"></span>${fresh ? '<span class="muted">new card</span>' : ''}</div>
@@ -311,7 +362,7 @@ function renderStudy() {
     <section class="card" aria-live="polite">${cardHeader(card, phase)}${frontHTML(card)}`;
 
   if (!isWhich && fresh && card.kind === 'recall') body += `<p class="meet">A new word for this deck. Guess anyway, even a rough one. A guess, even a wrong one, helps the answer stick.</p>`;
-  if (!isWhich && !session.revealed) body += `<p class="nudge">${esc(nudgeFor(session.shown).text)}</p>`;
+  if (!isWhich && !isWrite && !session.revealed) body += `<p class="nudge">${esc(nudgeFor(session.shown).text)}</p>`;
   if (session.hints > 0) body += `<ol class="hints" aria-label="Hints">${ladder.slice(0, session.hints).map(hintHTML).join('')}</ol>`;
 
   if (isWhich) {
@@ -328,9 +379,13 @@ function renderStudy() {
     const line = isWhich ? null : revealLine(session.hints);
     let top = isWhich ? '' : `<p class="aloud">Read the Hebrew aloud once.</p>`;
     if (line) top += `<p class="reveal-line">${esc(line)}</p>`;
+    const target = isWrite ? writeTarget(card) : null;
+    const right = target
+      ? `<figure><figcaption>${target.label}</figcaption><p class="heb-target">${heb(target.text, 'big')}</p></figure>`
+      : `<figure><figcaption>The meaning</figcaption><p class="gloss-big">${esc(card.item.gloss)}</p></figure>`;
     const compare = session.sketch
-      ? `<div class="compare"><figure><figcaption>Your answer</figcaption><img src="${session.sketch.url}" alt="Your handwritten answer"></figure><figure><figcaption>The meaning</figcaption><p class="gloss-big">${esc(card.item.gloss)}</p></figure></div>`
-      : '';
+      ? `<div class="compare"><figure><figcaption>Your answer</figcaption><img src="${session.sketch.url}" alt="Your handwritten answer"></figure>${right}</div>`
+      : (target ? `<div class="compare one">${right}</div>` : '');
     body += `<div class="answer">${top}${compare}${backHTML(card)}</div>`;
 
     const nb = state.settings.gradeButtons;
@@ -353,7 +408,8 @@ function renderStudy() {
       body += `<p class="hint">${keys}</p>`;
     }
   } else if (!isWhich) {
-    if (state.settings.showPad) body += `<div id="padhost"></div><p class="hint"><a href="#" id="hidepad">Hide the writing pad</a></p>`;
+    if (isWrite) body += `<div id="padhost"></div>`;
+    else if (state.settings.showPad) body += `<div id="padhost"></div><p class="hint"><a href="#" id="hidepad">Hide the writing pad</a></p>`;
     else body += `<p class="hint"><a href="#" id="showpad">Show a writing pad</a></p>`;
     body += `<div class="row answer-row"><button class="btn btn-primary" id="reveal">I have an answer</button>${ladder.length ? `<button class="btn" id="hint">${session.hints < ladder.length ? 'Give me a hint' : 'Show me'}</button>` : ''}</div>
       <p class="hint"><span class="kbd">space</span> answer &nbsp; <span class="kbd">h</span> hint</p>`;
@@ -365,7 +421,7 @@ function renderStudy() {
   const doReveal = () => { captureSketch(); session.revealed = true; renderStudy(); };
   const host = $('#padhost');
   if (host) {
-    session.pad = createPad(host, { title: padTitle(card), onAnswer: doReveal });
+    session.pad = createPad(host, { title: padTitle(card), onAnswer: doReveal, height: isWrite ? 190 : 150 });
     if (session.sketch) session.pad.restore(session.sketch.ink);
   }
 
@@ -388,7 +444,11 @@ function renderStudy() {
       if (session.revealed) return;
       session.picked = b.dataset.pick;
       session.revealed = true;
+      const right = session.picked === card.item.id;
+      session.whichStreak = right ? session.whichStreak + 1 : 0;
       renderStudy(); // a right pick counts as Got it, a wrong pick as Not yet
+      // Which word? is graded by the app, not by you, so a run of right picks can earn a spark honestly.
+      if (right && session.whichStreak >= 3 && session.whichStreak % 3 === 0) celebrate(`${session.whichStreak} in a row`, 'spark');
     };
   });
 }
@@ -404,7 +464,8 @@ function renderWrapUp() {
   const next = DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id).due).sort((a, b) => a - b)[0];
   const names = ids => ids.length ? `<ul class="moved">${ids.map(id => { const l = BOOK.lexemes.get(id); return `<li>${heb(lemmaText(l))} ${esc(l.gloss)}</li>`; }).join('')}</ul>` : '';
   const tile = (n, label, ids) => `<div class="stat"><b>${n}</b><span>${label}</span>${names(ids)}</div>`;
-  view.innerHTML = `<div class="card done"><h2>Session done</h2><div class="big">${session.done}</div><p class="muted">cards answered</p>
+  const meetLine = session.counts && session.counts.meet ? `<p class="meet-stars">Meet ${starsHTML(meetStarsNow())}</p>` : '';
+  view.innerHTML = `<div class="card done"><h2>Session done</h2><div class="big">${session.done}</div><p class="muted">cards answered</p>${meetLine}
     <div class="stats moved-stats">${tile(diff.met.length, diff.met.length === 1 ? 'word met' : 'words met', diff.met)}${tile(diff.graduated.length, 'graduated', diff.graduated)}${tile(diff.solid.length, 'now solid', diff.solid)}</div>
     <div class="pipeline-wrap">${pipelineHTML(countStages(after))}</div>
     <p style="margin-top:14px">${next ? `Next cards come due ${fmtDue(next)}.` : ''} Coming back tomorrow matters more than doing more today. Spacing is a big part of what makes this stick.</p>
@@ -696,6 +757,8 @@ function renderSettings() {
         <div class="seg" role="group"><button data-gb="2" aria-pressed="${s.gradeButtons === 2}">Not yet / Got it</button><button data-gb="3" aria-pressed="${s.gradeButtons === 3}">+ Partly</button><button data-gb="4" aria-pressed="${s.gradeButtons === 4}">+ Easy</button></div></div>
       <div class="field"><label>Writing pad</label><span class="help">A space under each question to write your answer by finger, stylus or mouse. Writing keeps self-grading honest.</span>
         <div class="seg" role="group"><button data-pad="1" aria-pressed="${s.showPad}">Show</button><button data-pad="0" aria-pressed="${!s.showPad}">Hide</button></div></div>
+      <div class="field"><label>Write the Hebrew</label><span class="help">Once a word's meaning has held for a few days, a card blanks it in its verse and asks you to write the Hebrew on the pad: its dictionary form, or the word as it stands in the verse. The answer shows both.</span>
+        <div class="seg" role="group"><button data-wf="lemma" aria-pressed="${s.writeForm === 'lemma'}">Dictionary form</button><button data-wf="verse" aria-pressed="${s.writeForm === 'verse'}">As in the verse</button></div></div>
     </div>
     <div class="panel"><h2>Your progress</h2><p class="small muted">Progress is saved in this browser only. Export it to move to another phone or laptop, or as a backup.</p>
       <div class="actions"><button class="btn" id="export">Export progress</button><label class="btn file-btn">Import progress<input type="file" id="import" accept="application/json,.json"></label><button class="btn danger" id="reset">Start over</button></div></div>
@@ -710,6 +773,7 @@ function renderSettings() {
   view.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { s.hebSize = b.dataset.hs; applyHebSize(); save(); renderSettings(); });
   view.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { s.gradeButtons = Number(b.dataset.gb); save(); renderSettings(); });
   view.querySelectorAll('[data-pad]').forEach(b => b.onclick = () => { s.showPad = b.dataset.pad === '1'; save(); renderSettings(); });
+  view.querySelectorAll('[data-wf]').forEach(b => b.onclick = () => { s.writeForm = b.dataset.wf; save(); renderSettings(); });
   $('#export').onclick = () => {
     const blob = new Blob([store.exportState(state)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `hebrew-by-book-progress-${store.todayKey()}.json`; a.click();

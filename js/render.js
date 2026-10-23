@@ -32,8 +32,9 @@ export function makeRenderer({ lexemes, isPointed, stageOf }) {
   const heb = (text, cls = '') => `<span class="heb${cls ? ' ' + cls : ''}" lang="he" dir="rtl">${esc(text)}</span>`;
   const glossLine = t => { if (t.gl) return t.gl.gloss; const l = lexemes.get(t.lex); return l ? l.gloss : ''; };
 
-  // One word of a verse. o: { highlight, tappable, glosses, stages, noJoin }
+  // One word of a verse. o: { highlight, blank, tappable, glosses, stages, noJoin }
   function tokHTML(t, o, extra = '') {
+    if (o.blank === t.id) return `<span class="w blank" role="img" aria-label="missing word"><span class="wt"></span></span>`;
     const cls = ['w'];
     if (o.highlight === t.id) cls.push('hl');
     if (o.stages) cls.push('st-' + stageOf(t.lex));

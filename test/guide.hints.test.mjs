@@ -49,3 +49,8 @@ test('pruneSnapshots drops entries older than keepDays', () => {
   const snaps = { '2026-08-01': {}, '2026-10-19': {}, '2026-10-20': {} };
   assert.deepEqual(Object.keys(pruneSnapshots(snaps, '2026-10-20', 60)), ['2026-10-19', '2026-10-20']);
 });
+
+test('write ladder: part of speech + sound, then the first letter or the dictionary form', () => {
+  assert.deepEqual(hintLadder(card('write', { token: 't1' })).map(h => h.type), ['pos', 'firstLetter']);
+  assert.deepEqual(hintLadder(card('write', { token: 't1' }), { writeTarget: 'verse' }).map(h => h.type), ['pos', 'lemma']);
+});

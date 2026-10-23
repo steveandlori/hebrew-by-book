@@ -79,3 +79,11 @@ test('distractorsFor is deterministic', () => {
   const l = book.vocab[5];
   assert.deepEqual(distractorsFor(book, l).map(x => x.id), distractorsFor(book, l).map(x => x.id));
 });
+
+test('every vocabulary word has one Write the Hebrew card on one of its occurrences', () => {
+  for (const l of book.vocab) {
+    const ws = deck.filter(c => c.item.id === l.id && c.kind === 'write');
+    assert.equal(ws.length, 1, l.id);
+    assert.ok(l.occ.includes(ws[0].token), l.id);
+  }
+});

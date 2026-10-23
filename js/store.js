@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   hebSize: 'm',        // Hebrew text size: s, m, l
   introSeen: false,  // How it works shown once on first visit
   showPad: true,     // writing pad under recall prompts
+  writeForm: 'lemma', // Write-the-Hebrew cards ask for the dictionary form ('lemma') or the form in the verse ('verse')
 };
 
 function normalizeSettings(raw) {
@@ -18,6 +19,7 @@ function normalizeSettings(raw) {
   if (![2, 3, 4].includes(s.gradeButtons)) s.gradeButtons = 3;
   if (!['pointed', 'unpointed'].includes(s.pointing)) s.pointing = 'pointed';
   if (!['s', 'm', 'l'].includes(s.hebSize)) s.hebSize = 'm';
+  if (!['lemma', 'verse'].includes(s.writeForm)) s.writeForm = 'lemma';
   if (!(Number(s.newPerDay) > 0)) s.newPerDay = DEFAULT_SETTINGS.newPerDay;
   return s;
 }

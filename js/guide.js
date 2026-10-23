@@ -61,21 +61,24 @@ export function stageDiff(before, after) {
 /* ───────────────────────── session composer ───────────────────────── */
 
 export const PHASE_LABEL = { recall: 'Recall', meet: 'Meet', deepen: 'Deepen', tell: 'Tell apart' };
-const DEEPEN_KINDS = new Set(['form']);
+const DEEPEN_KINDS = new Set(['form', 'write']);
+// Write-the-Hebrew cards wait until the word's recall card has held for this many days: asking for the
+// Hebrew of a word met an hour ago mostly produces misses.
+export const WRITE_READY_DAYS = 3;
 
 function shuffleWith(arr, rng) {
   const out = arr.slice();
   for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
   return out;
 }
-function interleave(a, b) {
+function interleave(...lists) {
   const out = [];
-  for (let i = 0; i < Math.max(a.length, b.length); i++) { if (i < a.length) out.push(a[i]); if (i < b.length) out.push(b[i]); }
+  for (let i = 0; i < Math.max(...lists.map(l => l.length)); i++) for (const l of lists) if (i < l.length) out.push(l[i]);
   return out;
 }
 
 // Builds today's guided queue in phases: recall (due), meet (new words as recall + in-verse pairs),
-// deepen (other forms of graduated words) and tell apart (Which word? cards for graduated words).
+// deepen (other forms of graduated words; writing the Hebrew of words recalled steadily) and tell apart (Which word? cards for graduated words).
 // `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today.
 export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, rng = Math.random }) {
   const stages = stagesByItem(deck, getCard);
@@ -90,7 +93,10 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   const recall = [...recallDue, ...recallSoon];
   const dueTell = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
   const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
-  const deepenNew = deck.filter(c => DEEPEN_KINDS.has(c.kind) && isNew(c.id) && settled(c.item.id));
+  const recallOf = new Map(deck.filter(c => c.kind === 'recall').map(c => [c.item.id, getCard(c.id)]));
+  const writeReady = iid => { const r = recallOf.get(iid); return inReview(r) && r.stability >= WRITE_READY_DAYS; };
+  const deepenNew = deck.filter(c => c.kind === 'form' && isNew(c.id) && settled(c.item.id));
+  const writeNew = deck.filter(c => c.kind === 'write' && isNew(c.id) && writeReady(c.item.id));
   // In-verse cards whose recall card was met but which were left behind finish the meet first (no new word used).
   const meetFinish = deck.filter(c => c.kind === 'ctx' && isNew(c.id) && stages.get(c.item.id) !== 'new');
   const meetPairs = [];
@@ -102,7 +108,7 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
 
   const meet = [...meetFinish];
   for (const pair of meetPairs.slice(0, Math.max(0, newWords))) meet.push(...pair);
-  const extraTake = interleave(tellNew, deepenNew).slice(0, Math.max(0, extra));
+  const extraTake = interleave(tellNew, deepenNew, writeNew).slice(0, Math.max(0, extra));
   const tell = [...dueTell, ...extraTake.filter(c => c.kind === 'which')];
   const deepen = extraTake.filter(c => c.kind !== 'which');
 
@@ -123,10 +129,10 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
 }
 
 // What is left of today's allowances, given the card ids introduced today: new words (counted by their recall
-// card) and new deepen/tell-apart cards (form, which). In-verse cards finishing a meet use no allowance.
+// card) and new deepen/tell-apart cards (form, write, which). In-verse cards finishing a meet use no allowance.
 export function allowances(introducedToday, newPerDay) {
   const words = introducedToday.filter(id => id.endsWith(':recall')).length;
-  const extra = introducedToday.filter(id => /:(form|which)(:|$)/.test(id)).length;
+  const extra = introducedToday.filter(id => /:(form|which|write)(:|$)/.test(id)).length;
   return { words: Math.max(0, newPerDay - words), extra: Math.max(0, newPerDay - extra) };
 }
 
@@ -135,7 +141,9 @@ export function allowances(introducedToday, newPerDay) {
 // Hints reveal the answer gradually (Finn & Metcalfe 2010). Each entry is data; the app renders it.
 //   recall: part of speech (+ transliteration) → the word in one of its verses → first letter of the gloss
 //   ctx/form: the dictionary form → the full parse of this form
-export function hintLadder(card) {
+//   write:    part of speech + pronunciation → the first letter (dictionary form asked) or the dictionary form
+//             (the form in the verse asked)
+export function hintLadder(card, { writeTarget = 'lemma' } = {}) {
   const w = card.item;
   switch (card.kind) {
     case 'recall': return [
@@ -145,6 +153,10 @@ export function hintLadder(card) {
     ];
     case 'ctx':
     case 'form': return [{ type: 'lemma', item: w.id }, { type: 'parse', token: card.token }];
+    case 'write': return [
+      { type: 'pos', pos: w.pos, tr: w.tr },
+      writeTarget === 'verse' ? { type: 'lemma', item: w.id } : { type: 'firstLetter', item: w.id },
+    ];
     default: return [];
   }
 }

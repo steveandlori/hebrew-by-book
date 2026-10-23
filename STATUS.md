@@ -67,6 +67,16 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     `_splits` in the overrides moves tokens by parse to a new key; so far only הִיא "she" (H1931f) out of הוּא H1931.
     The other pronouns already had separate entries (אַתָּה/אַתְּ/אַתֶּם, זֶה/זֹאת).
 
+19. **Meet stars** (Steve, 2026-10-23): a gold star at each fifth of the Meet cards cleared, banked to five, shown on
+    the Meet chip and at wrap-up. Stars follow progress, not "Got it" streaks, so they never reward generous
+    self-grading. A spark at every 3 right in a row on Which word?, which the app grades.
+20. **Write the Hebrew** (Steve, 2026-10-23): one card per word; the word is blanked in a verse, with its English
+    and part of speech as the cue; the pad is always shown. It asks for the dictionary form by default (Settings: or
+    the form in the verse) and the answer shows both. It enters with form and Which word? cards (same daily cap)
+    once the word's recall card has held for 3 days (`WRITE_READY_DAYS`). Hints: part of speech and sound, then the
+    first letter (or the dictionary form, when the verse form is asked). The Read-mode fill-in-the-blank was
+    declined by Steve for now.
+
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 
 Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,

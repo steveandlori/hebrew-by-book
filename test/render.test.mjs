@@ -95,3 +95,15 @@ test('אֶל lists אַל as a look-alike and carries the note about אֵל', ()
   assert.ok(h.includes('אַל') && h.includes('אֵל'));
   assert.equal(R.lookalikeHTML(book.lexemes.get('H1323')), '');
 });
+
+test('a blanked word hides its Hebrew and keeps the rest of the verse', () => {
+  const v = ruth.verses.find(x => x.ref === '2.3');
+  const t = v.t.find(x => x.lex === 'H1980');
+  const html = R.verseHTML(v, { blank: t.id });
+  assert.ok(html.includes('class="w blank"'));
+  assert.ok(!html.includes(t.p));
+  assert.ok(html.includes(v.t.find(x => x.id !== t.id && !x.kq).p));
+});
+test('write cards count against the extra allowance', () => {
+  assert.equal(allowances(['a:write', 'b:which', 'c:recall'], 10).extra, 8);
+});
