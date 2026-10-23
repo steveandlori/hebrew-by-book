@@ -571,3 +571,5 @@ body.sheet-open .view { padding-bottom: 72dvh; }
 }
 @keyframes burst-fade { 0%, 100% { opacity: 0; } 15%, 80% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .burst { animation: burst-fade 1.8s linear forwards; } }
+
+.listen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }

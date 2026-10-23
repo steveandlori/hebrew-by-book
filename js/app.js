@@ -61,6 +61,8 @@ const PARSE_KEY = `<details class="abbr"><summary>Reading the parses</summary><u
   <li><b>absolute / construct</b>: a noun standing alone, or bound to the next word ("X of").</li>
   <li><b>+</b> joins the parts of one written word: prefix + word + suffix.</li></ul></details>`;
 
+// Haktuvim (Bible Society in Israel): the text with an audio recording by a native reader, per chapter.
+const haktuvimURL = chapter => `https://haktuvim.co.il/study/${BOOK_DATA.book.id}.${chapter}`;
 const refLabel = ref => `${BOOK_NAME} ${ref.replace('.', ':')}`;
 const verseLinks = ref => {
   const [c, v] = ref.split('.');
@@ -545,6 +547,7 @@ function renderRead(param) {
     <p class="lead">Read a verse, then tap any word you are unsure of. Words are underlined by how well you know them.</p>
     <div class="panel read-bar">
       <div class="seg chapters" role="group" aria-label="Chapter">${BOOK.chapters.map(c => `<a href="#read/${c}" class="${c === chapter ? 'on' : ''}" aria-current="${c === chapter ? 'page' : 'false'}">${c}</a>`).join('')}</div>
+      <p class="listen"><a class="btn btn-small" href="${haktuvimURL(chapter)}" target="_blank" rel="noopener">Listen to chapter ${chapter} on Haktuvim</a> <span class="small muted">The Bible Society in Israel's site, with a native reader's recording.</span></p>
       <div class="row toggles">
         <label class="tog"><input type="checkbox" id="tg-gloss" ${reader.glosses ? 'checked' : ''}> Glosses under words</label>
         <label class="tog"><input type="checkbox" id="tg-stage" ${reader.stages ? 'checked' : ''}> Show what I know</label>

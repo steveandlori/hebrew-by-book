@@ -79,6 +79,10 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     first letter (or the dictionary form, when the verse form is asked). The Read-mode fill-in-the-blank was
     declined by Steve for now.
 
+21. **Listening**: each chapter in Read links to Haktuvim (Bible Society in Israel), whose chapter pages have a native
+    reader's recording (Steve, 2026-10-23). Link form `https://haktuvim.co.il/study/<OSIS book>.<chapter>`, from Steve.
+    Sefaria and STEP Bible stay in the word pop-ups.
+
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 
 Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,

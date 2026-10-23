@@ -3,6 +3,8 @@
 Checks the source/credit URLs and the Sefaria link for every verse in each built book (Sefaria returns 404 for
 references that do not exist, so this also proves the reference format). STEP Bible answers scripted clients with
 403, so its verse links are not checked here; one was verified by hand in a browser (Ruth 3:3, 2026-10-22).
+Haktuvim answers 200 for any chapter (the text loads by script, so Ruth.9 is "live" too); its chapter links are not
+checked here. Ruth 1 (Steve) and Ruth 3 (Playwright: text and audio player) were checked in a browser, 2026-10-23.
 """
 import json
 import re
