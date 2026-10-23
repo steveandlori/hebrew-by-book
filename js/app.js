@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, WRITE_READY_VIEWS, inPlaceViews, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -267,12 +267,26 @@ function onGrade(rating) {
     session.queue.splice(pos, 0, card);
     session.total++;
   }
+  if (card.kind === 'ctx' || card.kind === 'form') queueWriteCard(card.item);
   nextCard();
   const stars = meetStarsNow();
   if (stars > session.meetStars) {
     session.meetStars = stars;
     celebrate(stars >= 5 ? 'Meet complete ★★★★★' : `Meet: ${stars} of 5 ★`, stars >= 5 ? 'full' : '');
   }
+}
+
+// The second time a word is read in place, its Write the Hebrew card joins this session a few cards later
+// (within the day's cap on new practice cards), rather than waiting for the next session to be planned.
+function queueWriteCard(item) {
+  const wc = DECK_BY_ID[`${item.id}:write`];
+  if (!wc || !isNew(wc.id) || session.queue.includes(wc)) return;
+  if (inPlaceViews(DECK.filter(c => c.item.id === item.id), cardState) < WRITE_READY_VIEWS) return;
+  const queuedNew = session.queue.filter(c => c.kind !== 'recall' && c.kind !== 'ctx' && isNew(c.id)).length;
+  if (extraAllowance() - queuedNew <= 0) return;
+  session.queue.splice(Math.min(session.queue.length, 3), 0, wc);
+  session.total++;
+  if (session.phaseOf) { session.phaseOf.set(wc.id, 'deepen'); session.counts.deepen++; }
 }
 
 // Meet is the long stretch of a day, so it is marked in fifths: a star for each fifth of the new-word
@@ -757,7 +771,7 @@ function renderSettings() {
         <div class="seg" role="group"><button data-gb="2" aria-pressed="${s.gradeButtons === 2}">Not yet / Got it</button><button data-gb="3" aria-pressed="${s.gradeButtons === 3}">+ Partly</button><button data-gb="4" aria-pressed="${s.gradeButtons === 4}">+ Easy</button></div></div>
       <div class="field"><label>Writing pad</label><span class="help">A space under each question to write your answer by finger, stylus or mouse. Writing keeps self-grading honest.</span>
         <div class="seg" role="group"><button data-pad="1" aria-pressed="${s.showPad}">Show</button><button data-pad="0" aria-pressed="${!s.showPad}">Hide</button></div></div>
-      <div class="field"><label>Write the Hebrew</label><span class="help">Once a word's meaning has held for a few days, a card blanks it in its verse and asks you to write the Hebrew on the pad: its dictionary form, or the word as it stands in the verse. The answer shows both.</span>
+      <div class="field"><label>Write the Hebrew</label><span class="help">Once you have read a word in its verse a couple of times, a card blanks it in its verse and asks you to write the Hebrew on the pad: its dictionary form, or the word as it stands in the verse. The answer shows both.</span>
         <div class="seg" role="group"><button data-wf="lemma" aria-pressed="${s.writeForm === 'lemma'}">Dictionary form</button><button data-wf="verse" aria-pressed="${s.writeForm === 'verse'}">As in the verse</button></div></div>
     </div>
     <div class="panel"><h2>Your progress</h2><p class="small muted">Progress is saved in this browser only. Export it to move to another phone or laptop, or as a backup.</p>

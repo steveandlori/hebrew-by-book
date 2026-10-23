@@ -94,16 +94,19 @@ test('zero allowances still serve due cards', () => {
   assert.deepEqual(r.queue.map(c => c.id), ['a:recall']);
 });
 
-test('write-the-Hebrew cards wait until recall has held for WRITE_READY_DAYS', async () => {
-  const { WRITE_READY_DAYS } = await import('../js/guide.js');
-  const deck = [...w('a', ['recall', 'ctx', 'write']), ...w('b', ['recall', 'ctx', 'write'])];
-  const cards = { 'a:recall': rev(WRITE_READY_DAYS), 'a:ctx': rev(), 'b:recall': rev(WRITE_READY_DAYS - 1), 'b:ctx': rev() };
+test('write-the-Hebrew cards wait until the word has been read in place WRITE_READY_VIEWS times', async () => {
+  const { WRITE_READY_VIEWS } = await import('../js/guide.js');
+  const deck = [...w('a', ['recall', 'ctx', 'form', 'write']), ...w('b', ['recall', 'ctx', 'write']), ...w('c', ['recall', 'ctx', 'form', 'write'])];
+  const seen = n => ({ state: State.Learning, stability: 0.5, reps: n, due: new Date(8.64e15) });
+  const cards = { 'a:recall': seen(1), 'a:ctx': seen(WRITE_READY_VIEWS),          // two views in its verse: ready
+    'b:recall': seen(1), 'b:ctx': seen(WRITE_READY_VIEWS - 1),                   // one view: not yet
+    'c:recall': seen(1), 'c:ctx': seen(1), 'c:form': seen(1) };                  // other forms count too
   const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 0, extra: 5, rng });
-  assert.deepEqual(phases(r, 'deepen'), ['a:write']);
+  assert.deepEqual(new Set(phases(r, 'deepen').filter(id => id.endsWith(':write'))), new Set(['a:write', 'c:write']));
 });
 test('write cards share the extra budget with form and Which word? cards', () => {
   const deck = [...w('a', ['recall', 'ctx', 'form', 'write']), wh('a')];
-  const cards = { 'a:recall': rev(), 'a:ctx': rev() };
+  const cards = { 'a:recall': rev(), 'a:ctx': { ...rev(), reps: 2 } };
   const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 0, extra: 3, rng });
   assert.equal(r.counts.deepen + r.counts.tell, 3);
   const two = composeSession({ deck, getCard: id => cards[id] || null, isDue: never, newWords: 0, extra: 2, rng });

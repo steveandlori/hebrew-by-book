@@ -62,9 +62,14 @@ export function stageDiff(before, after) {
 
 export const PHASE_LABEL = { recall: 'Recall', meet: 'Meet', deepen: 'Deepen', tell: 'Tell apart' };
 const DEEPEN_KINDS = new Set(['form', 'write']);
-// Write-the-Hebrew cards wait until the word's recall card has held for this many days: asking for the
-// Hebrew of a word met an hour ago mostly produces misses.
-export const WRITE_READY_DAYS = 3;
+// Write-the-Hebrew cards wait until the word has been read in place (its in-verse and other-form cards)
+// this many times (Steve, 2026-10-23: "after the word has been read in place a couple of times").
+export const WRITE_READY_VIEWS = 2;
+
+// Times a word has been read in place: reviews of its in-verse and other-form cards.
+export function inPlaceViews(icards, getCard) {
+  return icards.filter(c => c.kind === 'ctx' || c.kind === 'form').reduce((n, c) => n + ((getCard(c.id) || {}).reps || 0), 0);
+}
 
 function shuffleWith(arr, rng) {
   const out = arr.slice();
@@ -93,8 +98,9 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   const recall = [...recallDue, ...recallSoon];
   const dueTell = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
   const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
-  const recallOf = new Map(deck.filter(c => c.kind === 'recall').map(c => [c.item.id, getCard(c.id)]));
-  const writeReady = iid => { const r = recallOf.get(iid); return inReview(r) && r.stability >= WRITE_READY_DAYS; };
+  const byItem = new Map();
+  for (const c of deck) { if (!byItem.has(c.item.id)) byItem.set(c.item.id, []); byItem.get(c.item.id).push(c); }
+  const writeReady = iid => inPlaceViews(byItem.get(iid), getCard) >= WRITE_READY_VIEWS;
   const deepenNew = deck.filter(c => c.kind === 'form' && isNew(c.id) && settled(c.item.id));
   const writeNew = deck.filter(c => c.kind === 'write' && isNew(c.id) && writeReady(c.item.id));
   // In-verse cards whose recall card was met but which were left behind finish the meet first (no new word used).

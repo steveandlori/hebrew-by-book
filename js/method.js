@@ -128,7 +128,7 @@ const WHY = [
   {
     title: 'Think, write, say',
     evidence: `Recalling an answer silently strengthens memory about as much as writing or typing it does${cite(20)}, so thinking counts. What writing adds is honesty: a written answer shows exactly what you had and what you were missing, while an answer kept in your head is easy to grade too kindly, and overrating your own answers is one way students end up remembering less than they expect${cite(22)}. Reading some items aloud makes them stand out from the ones you read silently, which is why the app asks for it only now and then${cite(21)}.`,
-    applied: 'The card nudges you to say it, write it, or answer it in your head in turn. The writing pad shows your answer beside the meaning so grading is a comparison, not a feeling. Once a word’s meaning has held for a few days, Write the Hebrew cards turn it around: the word is blanked in its verse and you write the Hebrew, then compare it with the dictionary form and the form in the verse.',
+    applied: 'The card nudges you to say it, write it, or answer it in your head in turn. The writing pad shows your answer beside the meaning so grading is a comparison, not a feeling. Once you have read a word in its verse a couple of times, Write the Hebrew cards turn it around: the word is blanked in its verse and you write the Hebrew, then compare it with the dictionary form and the form in the verse.',
   },
   {
     title: 'Honest grading',

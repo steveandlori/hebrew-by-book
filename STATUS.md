@@ -73,7 +73,8 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 20. **Write the Hebrew** (Steve, 2026-10-23): one card per word; the word is blanked in a verse, with its English
     and part of speech as the cue; the pad is always shown. It asks for the dictionary form by default (Settings: or
     the form in the verse) and the answer shows both. It enters with form and Which word? cards (same daily cap)
-    once the word's recall card has held for 3 days (`WRITE_READY_DAYS`). Hints: part of speech and sound, then the
+    once the word has been read in place twice: in-verse and other-form views (`WRITE_READY_VIEWS`; Steve, 2026-10-23,
+    replacing a 3-day wait). The card joins the current session a few cards after the second view. Hints: part of speech and sound, then the
     first letter (or the dictionary form, when the verse form is asked). The Read-mode fill-in-the-blank was
     declined by Steve for now.
 
