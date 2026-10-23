@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-22 (late evening)',
-    headline: 'Your first feedback is live: plain English for every word in its verse, and “Don’t confuse” notes (אֶל vs אֵל).',
+    asOf: '2026-10-23',
+    headline: 'Your second round of feedback is live: הוּא/הִיא split, the pad keeps its size, evenly spaced gold stars in Meet, Write the Hebrew cards, and a Haktuvim audio link on every chapter.',
     stats: [
-      { label: 'Ruth words taught', value: '286' },
+      { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '117' },
+      { label: 'tests passing', value: '120' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -84,7 +84,7 @@ const BOARD = {
         { t: 'Publish: public GitHub repo + Pages', s: 'done' },
       ] },
     { id: 'm2', title: 'Deepen Ruth', status: 'active',
-      summary: 'Steve’s first feedback (2026-10-22) comes first: plain English for each word in its verse, and notes on look-alike words. Then the banked ideas: verb parsing drills; ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works.',
+      summary: 'Steve’s feedback comes first. 2026-10-22: plain English for each word in its verse, and notes on look-alike words. 2026-10-23: הוּא/הִיא as two words, the pad fix, Meet stars, Write the Hebrew, a Haktuvim audio link, README and licence. Still banked: verb parsing drills; ketiv/qere as drilled cards; offline use and cache-busting; research additions to How it works.',
       tasks: [
         { t: 'Plain English for every word in its verse (“and she went / walked”), short breakdown after, full parse folded away', s: 'done' },
         { t: 'Verb senses by stem from BDB (e.g. 1:20 Hiphil “made bitter”, 4:18 “fathered”); participles used as nouns (“redeemer”)', s: 'done' },
@@ -93,8 +93,13 @@ const BOARD = {
         { t: 'Publish', s: 'done' },
         { t: 'הוּא “he” and הִיא “she” learned as two words (Strong’s files both under one number)', s: 'done' },
         { t: 'Writing pad: ink no longer shrinks each time you leave and return to full screen', s: 'done' },
-        { t: 'Gold stars for each fifth of Meet, banked to five; a spark for 3 right in a row on Which word? (graded by the app)', s: 'done' },
-        { t: 'Write the Hebrew cards: the word blanked in its verse, write its dictionary form (or, in Settings, the form in the verse); answer shows both', s: 'done' },
+        { t: 'Gold stars, outlined, for each fifth of Meet, banked to five; a spark for 3 right in a row on Which word? (graded by the app)', s: 'done' },
+        { t: 'Stars evenly spaced: counted in clean recalls, not finished cards (version 1 bunched them at the end; Steve noticed)', s: 'done' },
+        { t: 'Write the Hebrew cards: the word blanked in its verse, write its dictionary form (or, in Settings, the form in the verse); answer shows both. Steve tried it: “worked well”', s: 'done' },
+        { t: 'Write the Hebrew unlocks after reading the word in its verse, joining the same session; Settings: after 1, 2 (default), 3 or 5 views, or Off', s: 'done' },
+        { t: 'Read: “Listen to chapter N on Haktuvim” (native reader’s recording)', s: 'done' },
+        { t: 'README rewritten (what it does, layout, development, data overrides); MIT License © Steve Thomas for the code', s: 'done' },
+        { t: 'Notes for josie-stats (pad bug it shares; Meet stars and the bunching lesson) copied to its docs/handoff/', s: 'done' },
       ] },
     { id: 'm3', title: 'More books', status: 'later',
       summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
@@ -110,7 +115,7 @@ const BOARD = {
     { id: 't7', date: '2026-10-23', title: 'Read, then listen on Haktuvim',
       steps: 'Read → any chapter → “Listen to chapter N on Haktuvim” (under the chapter numbers). It opens that chapter on haktuvim.co.il with its audio player at the top.' },
     { id: 't6', date: '2026-10-23', title: 'Stars in Meet; Write the Hebrew',
-      steps: 'Today: the Meet chip at the top now has five hollow stars; a gold one floats up at each fifth of the new-word cards. Write the Hebrew cards start once you have read a word in its verse twice, a few cards after the second time, on day one. Settings → Write the Hebrew sets how many views unlock the card (1, 2, 3, 5 or Off) and whether you write the dictionary form or the form in the verse.' },
+      steps: 'Today: the Meet chip at the top now has five hollow stars; a gold one floats up at each fifth of the way through Meet, evenly spaced (about every 12 cards at 10 new words). Write the Hebrew cards start once you have read a word in its verse twice, a few cards after the second time, on day one. Settings → Write the Hebrew sets how many views unlock the card (1, 2, 3, 5 or Off) and whether you write the dictionary form or the form in the verse.' },
     { id: 't5', date: '2026-10-23', title: 'Full-screen pad round trip; הִיא in Words',
       steps: 'Today → write bigger → write a word → Done → write bigger again: the ink is back at full size, however many times you go back and forth. In Words, הוּא “he” and הִיא “she” are now separate entries, each with a “Don’t confuse” note.' },
     { id: 't4', date: '2026-10-22', title: 'Tap a word: English first now',
@@ -123,7 +128,9 @@ const BOARD = {
       steps: 'Read → "Written and read: 13 places". Each place hides both parses until you open it. Tell me if any wording takes a side.' },
   ],
   docs: [
-    { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-22' },
+    { title: 'README', href: 'README.md', blurb: 'What the app does, repository layout, how to build and test, how corrections and new books work, sources and licences.', date: '2026-10-23' },
+    { title: 'Notes for josie-stats', href: 'docs/handoff/to-josie-stats-2026-10-23.md', blurb: 'The pad shrink bug both projects had and its fix; Meet stars and why counting finished cards bunched them. Copied to josie-stats/docs/handoff/.', date: '2026-10-23' },
+    { title: 'STATUS.md', href: 'STATUS.md', blurb: 'Narrative status: what got done, decisions taken (veto-able), banked ideas.', date: '2026-10-23' },
     { title: 'Review packet: every word’s English', href: 'docs/review/ruth-renderings.md', blurb: 'All 1,306 words of Ruth with form, parse, gloss and the generated English, verse by verse.', date: '2026-10-22' },
     { title: 'Renderings review', href: 'docs/review/renderings-1.md', blurb: 'Every word’s English checked against its parse and BDB; findings, override checks, look-alike proposals, and the confirmation pass.', date: '2026-10-22' },
     { title: 'QA report', href: 'docs/review/qa-1.md', blurb: 'Written-plan QA: 13 scenarios including a 7-day simulation with a faked clock. Verdict SHIP.', date: '2026-10-22' },
