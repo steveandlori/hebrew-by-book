@@ -93,6 +93,12 @@ Add it to `BOOKS` in `pipeline/build.py` and run `python pipeline/build.py <Book
 (a lexeme without a gloss or BDB entry, an override for a key not in the book). The app does not yet have a book
 picker; that is planned (see the board).
 
+## Licence
+
+The app's own code (HTML, CSS, JavaScript, the Python pipeline and tests) is under the [MIT License](LICENSE).
+The data and third-party parts keep their own licences, listed below. `data/ruth.js` is built from the CC BY 4.0
+sources and carries their terms, so anyone reusing it must credit them as given here.
+
 ## Sources
 
 - Hebrew text and morphology: [Open Scriptures Hebrew Bible](https://github.com/openscriptures/morphhb)
