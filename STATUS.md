@@ -109,6 +109,14 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 25. **Debug links** (Steve's idea, 2026-10-24): `?debug=<scenario>` opens one part of the app directly, on scratch
     storage wiped at each load (`hebrew-by-book-debug`), with a yellow strip marking it. Scenarios and options are
     in README and docs/agents/COMMON.md; `?debug=help` lists them.
+26. **Stages** (Steve, 2026-10-25: Learning "is always 0", and its yellow never showed). Learning used to mean "in
+    the first session's learning steps", which every word leaves the day it is met. Now: **Learning** = met, not
+    yet recalled (Got it or Easy) on a later day; **Graduated** = recalled on a later day; **Solid** unchanged. Kept
+    as `state.laterRecall` (word → day), set in `applyGrade` and filled in from the review log at load and on
+    import. The session composer keeps the old reading (`stagesByItem` without `recalledLater`), so other forms
+    and look-alikes still start once a word's Meet is done. The day-start baseline is versioned (`v: 2`) so a
+    wrap-up never compares the two readings. The card-level stats were renamed "cards in review" / "cards in short
+    steps" so they do not clash with the word stages. The Progress history from before this mixes the two readings.
 
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 

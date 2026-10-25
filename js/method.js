@@ -133,7 +133,7 @@ const WHY = [
   {
     title: 'Honest grading',
     evidence: `Students who misjudged their own answers, usually too generously, remembered less two days later than students who judged them accurately, even after allowing for how much they practised${cite(22)}. A few grades with clear meanings remove the temptation to call a miss something better than it was.`,
-    applied: 'Not yet, Partly and Got it. Partly records progress without perfection: the card keeps the ground it has gained instead of starting over, and comes back a little sooner than a full recall would. Only Got it counts toward the three clean recalls a new card needs to graduate. When you used a hint, the card grades itself Partly or Not yet.',
+    applied: 'Not yet, Partly and Got it. Partly records progress without perfection: the card keeps the ground it has gained instead of starting over, and comes back a little sooner than a full recall would. Only Got it counts toward the three clean recalls a new card needs in its first session. When you used a hint, the card grades itself Partly or Not yet.',
   },
 ];
 
@@ -154,8 +154,8 @@ export function methodHTML({ firstVisit = false, wordCount = 0, bookName = 'Ruth
     <h2>How a word moves</h2>
     <div class="stage-flow">
       <div><b>New</b><span>Not met yet.</span></div>
-      <div><b>Learning</b><span>Met. Comes back within minutes until you have recalled it three times.</span></div>
-      <div><b>Graduated</b><span>Comes back over days. Its other forms and its look-alikes start appearing.</span></div>
+      <div><b>Learning</b><span>Met. Comes back within minutes until you have recalled it three times, then a day or two later. Its other forms and its look-alikes start appearing.</span></div>
+      <div><b>Graduated</b><span>Recalled on a later day, after a night’s sleep: the first sign it has stuck. Comes back at growing gaps.</span></div>
       <div><b>Solid</b><span>A week or more between reviews, and you can pick it out in a verse among look-alikes.</span></div>
     </div>
     <h2>References</h2>

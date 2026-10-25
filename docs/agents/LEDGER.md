@@ -52,3 +52,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-24 | Read link dropped from the finished-day buttons (Steve: the Read tab is always there); 390 px check: three buttons, no sideways scroll | coordinator | js 78 |
 | 2026-10-24 | Fixed: How it works opened on every fresh load (#method kept in bookmark/tab); first visit, reload, #method bookmark and How tab checked in Playwright; josie-stats note item 3 | coordinator | js 78 |
 | 2026-10-24 | Practice? pad on revealed Write cards (Steve); debug links ?debug=fresh/today/done/write/card on scratch storage (Steve's idea). Browser: every scenario, real storage untouched, no console errors | coordinator | js 78 |
+| 2026-10-25 | Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Steve chose option 1). Browser: crafted two-day history shows 277/8/2/0 with the yellow segment | coordinator | js 80 |

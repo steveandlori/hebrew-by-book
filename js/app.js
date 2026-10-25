@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, writePractice, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, writePractice, introDayOf, laterRecalls, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, variantFor, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -108,12 +108,25 @@ function applyGrade(card, rating, hints = 0) {
   const day = store.todayKey(at);
   state.sessions[day] = (state.sessions[day] || 0) + 1;
   if (wasNew) (state.newIntroduced[day] = state.newIntroduced[day] || []).push(card.id);
+  // Graduated: the word's recall card got Got it or Easy on a day after the one it was met.
+  if (card.kind === 'recall' && rating >= 3 && !state.laterRecall[card.item.id]) {
+    const met = introDayOf(state.newIntroduced, card.id);
+    if (met && day > met) state.laterRecall[card.item.id] = day;
+  }
   persist();
   return r.card;
 }
 
+// Words reviewed before laterRecall was kept are filled in from the review log (as far as it reaches).
+function fillLaterRecall() {
+  const found = laterRecalls(state.log, state.newIntroduced, at => store.todayKey(new Date(at)));
+  for (const [w, d] of Object.entries(found)) if (!state.laterRecall[w]) state.laterRecall[w] = d;
+}
+fillLaterRecall();
+const wordStages = () => stagesByItem(DECK, cardState, id => !!state.laterRecall[id]);
+
 let stageCache = null;
-function stages() { return stageCache || (stageCache = stagesByItem(DECK, cardState)); }
+function stages() { return stageCache || (stageCache = wordStages()); }
 function invalidateStages() { stageCache = null; }
 function stageOfLex(id) {
   const l = BOOK.lexemes.get(id);
@@ -242,10 +255,11 @@ function startSession() {
   for (const p of r.phaseOf.values()) session.counts[p]++;
   session.counts.meet = meet.ids.length;
   // The wrap-up compares with the day's start, kept across a reload (QA found "0 words met" after one).
-  if (state.dayStart && state.dayStart.day === session.day) session.stagesBefore = new Map(state.dayStart.stages);
+  // v2: stages as read since 2026-10-25 (Graduated = recalled on a later day); an older baseline is not comparable.
+  if (state.dayStart && state.dayStart.day === session.day && state.dayStart.v === 2) session.stagesBefore = new Map(state.dayStart.stages);
   else {
-    session.stagesBefore = stagesByItem(DECK, cardState);
-    state.dayStart = { day: session.day, stages: [...session.stagesBefore] };
+    session.stagesBefore = wordStages();
+    state.dayStart = { day: session.day, stages: [...session.stagesBefore], v: 2 };
     persist();
   }
   session.total = r.queue.length;
@@ -562,7 +576,7 @@ function renderStudy() {
 
 function renderWrapUp() {
   const view = $('#view');
-  const after = stagesByItem(DECK, cardState);
+  const after = wordStages();
   const diff = stageDiff(session.stagesBefore || after, after);
   const day = store.todayKey();
   state.snapshots[day] = buildSnapshot(countStages(after), DECK.filter(c => !isNew(c.id)).map(c => cardState(c.id)));
@@ -834,13 +848,13 @@ function renderProgress() {
     <div class="panel"><h2>Reading ${esc(BOOK_NAME)}</h2><p>Words you have graduated cover <b>${cov.pct}%</b> of the book's running text (${cov.known} of ${cov.total} words, names and prefixes aside).</p>
       <div class="bars">${chapterBars}</div></div>
     <div class="panel"><h2>Where your words are</h2>${pipelineHTML(counts)}
-      <p class="small muted" style="margin-top:10px">A word is <b>Learning</b> once you have met it, <b>Graduated</b> after three correct recalls, and <b>Solid</b> when it comes back a week or more apart and you can pick it out in a verse among look-alikes.</p></div>
+      <p class="small muted" style="margin-top:10px">A word is <b>Learning</b> once you have met it, <b>Graduated</b> once you recall it on a later day, and <b>Solid</b> when it comes back a week or more apart and you can pick it out in a verse among look-alikes.</p></div>
     <div class="panel"><div class="stats">
       <div class="stat"><b>${due}</b><span>due now</span></div>
-      <div class="stat"><b>${learned.length}</b><span>of ${DECK.length} cards learned</span></div>
+      <div class="stat"><b>${learned.length}</b><span>of ${DECK.length} cards in review</span></div>
       <div class="stat"><b>${streak()}</b><span>day streak</span></div>
       <div class="stat"><b>${today}</b><span>answered today</span></div>
-      <div class="stat"><b>${seen.length - learned.length}</b><span>still learning</span></div>
+      <div class="stat"><b>${seen.length - learned.length}</b><span>cards in short steps</span></div>
       <div class="stat"><b>${DECK.length - seen.length}</b><span>not seen yet</span></div>
     </div></div>
     <div class="panel"><h2>Momentum</h2><p class="small muted">Reviews per day. The gap between reviews grows as words get stronger, so the same deck takes less time each week.</p>${momentumHTML(at)}</div>
@@ -902,7 +916,7 @@ function renderSettings() {
   };
   $('#import').onchange = async e => {
     const file = e.target.files[0]; if (!file) return;
-    try { state = store.importState(await file.text()); scheduler = makeScheduler(state.settings); invalidateStages(); resetSession(); applyHebSize(); persist(); toast('Progress imported'); renderSettings(); }
+    try { state = store.importState(await file.text()); fillLaterRecall(); scheduler = makeScheduler(state.settings); invalidateStages(); resetSession(); applyHebSize(); persist(); toast('Progress imported'); renderSettings(); }
     catch (err) { toast(err.message || 'Could not read that file'); }
   };
   $('#reset').onclick = () => {
@@ -983,7 +997,7 @@ function debugSeed() {
   if (!DEBUG || DEBUG === 'fresh') return;
   state.settings.introSeen = true;
   const words = DEBUG === 'today' ? 0 : Math.max(0, Number(DEBUG_PARAMS.get('words') ?? 10) || 0);
-  state.dayStart = { day: store.todayKey(), stages: [...stagesByItem(DECK, cardState)] };
+  state.dayStart = { day: store.todayKey(), stages: [...wordStages()], v: 2 };
   for (const l of BOOK.vocab.slice(0, words)) for (const kind of ['recall', 'ctx']) {
     const c = DECK.find(x => x.id === `${l.id}:${kind}`);
     if (c) for (let i = 0; i < 3; i++) applyGrade(c, 3);

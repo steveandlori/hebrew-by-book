@@ -4,8 +4,8 @@
 // Per vocabulary word (not names, not prefixes/suffixes):
 //   recall  the dictionary form → what does it mean?            (meet, with ctx)
 //   ctx     a verse with one occurrence highlighted → meaning?   (meet)
-//   form    up to two other spellings of it in the book          (deepen, once graduated)
-//   which   a verse occurrence → pick the gloss among look-alikes (tell apart, once graduated)
+//   form    up to two other spellings of it in the book          (deepen, once its Meet is done)
+//   which   a verse occurrence → pick the gloss among look-alikes (tell apart, once its Meet is done)
 //   write   a verse with the word blanked + its English → write the Hebrew on the pad (deepen, once the word
 //           has been read in its verse `writeAfter` times; Settings). Never on a written/read place (asking for
 //           "the word" there would pick one reading), and never with the answer visible elsewhere in the verse.

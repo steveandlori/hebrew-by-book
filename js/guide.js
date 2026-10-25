@@ -10,14 +10,19 @@ const SOLID_STABILITY_DAYS = 7;
 
 const inReview = c => !!c && c.state === State.Review;
 
-// A word's stage is read off its cards' FSRS states; nothing extra is stored.
-// New: recall card never seen. Learning: recall in learning steps. Graduated: recall in review.
-// Solid: recall stable for a week or more, and its in-verse and Which word? cards (if any) in review too.
-export function itemStage(icards, getCard) {
+// A word's stage is read off its cards' FSRS states, plus whether it has been recalled on a later day.
+// New: recall card never seen. Learning: met, but not yet recalled (Got it or Easy) on a day after the one it was
+// met, or back in relearning after a miss. Graduated: recalled on a later day. Solid: recall stable for a week or
+// more, and its in-verse and Which word? cards (if any) in review too. Three recalls in the first session are
+// the easy part; the first recall after a night is the real milestone (Steve, 2026-10-25: Learning was always 0,
+// since every word left its learning steps the day it was met).
+// `recalledLater` defaults to true, which gives the old reading (Graduated = the first day's recalls done). The
+// session composer uses that: a word's other forms and look-alikes still start once its Meet is done.
+export function itemStage(icards, getCard, recalledLater = true) {
   const recallCard = icards.find(c => c.kind === 'recall');
   const recall = recallCard ? getCard(recallCard.id) : null;
   if (!recall) return 'new';
-  if (!inReview(recall)) return 'learning';
+  if (!inReview(recall) || !recalledLater) return 'learning';
   const ctx = icards.find(c => c.kind === 'ctx');
   const which = icards.find(c => c.kind === 'which');
   const ctxOk = !ctx || inReview(getCard(ctx.id));
@@ -26,7 +31,8 @@ export function itemStage(icards, getCard) {
   return 'graduated';
 }
 
-export function stagesByItem(deck, getCard) {
+// recalledLater(wordId) says whether a word has been recalled on a later day; leave it out for the old reading.
+export function stagesByItem(deck, getCard, recalledLater = () => true) {
   const by = new Map();
   for (const c of deck) {
     const k = c.item.id;
@@ -34,7 +40,30 @@ export function stagesByItem(deck, getCard) {
     by.get(k).push(c);
   }
   const out = new Map();
-  for (const [id, icards] of by) out.set(id, itemStage(icards, getCard));
+  for (const [id, icards] of by) out.set(id, itemStage(icards, getCard, recalledLater(id)));
+  return out;
+}
+
+// The day (YYYY-MM-DD) a card was first graded, from the record of cards introduced each day.
+export function introDayOf(introduced, cardId) {
+  let first = null;
+  for (const [day, ids] of Object.entries(introduced || {})) if (ids.includes(cardId) && (!first || day < first)) first = day;
+  return first;
+}
+
+// Words recalled (Got it or Easy on the recall card) on a later day than the one they were met, from the review
+// log: { wordId: day }. Used to fill in words reviewed before this was kept, as far as the log reaches.
+export function laterRecalls(log, introduced, dayOf) {
+  const first = {};
+  for (const [day, ids] of Object.entries(introduced || {})) for (const id of ids) if (!first[id] || day < first[id]) first[id] = day;
+  const out = {};
+  for (const e of log || []) {
+    if (!e.id.endsWith(':recall') || e.rating < 3) continue;
+    const day = dayOf(e.at);
+    if (!first[e.id]) first[e.id] = day;   // met before the record of introductions reached it
+    const word = e.id.slice(0, -':recall'.length);
+    if (day > first[e.id] && !out[word]) out[word] = day;
+  }
   return out;
 }
 
@@ -84,7 +113,8 @@ function interleave(...lists) {
 }
 
 // Builds today's guided queue in phases: recall (due), meet (new words as recall + in-verse pairs),
-// deepen (other forms of graduated words; writing the Hebrew of words read in place `writeAfter` times) and tell apart (Which word? cards for graduated words).
+// deepen (other forms of words whose Meet is done; writing the Hebrew of words read in place `writeAfter` times) and tell
+// apart (Which word? cards for words whose Meet is done). Stages here are the old reading (no `recalledLater`).
 // `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today;
 // `writeAfter` = in-place views that unlock a word's Write the Hebrew card (0: no write cards at all).
 export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random }) {

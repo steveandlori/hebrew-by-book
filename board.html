@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-24',
-    headline: 'New: “Practice?” pad on revealed Write cards; Review 10 / Write 10 / Meet 5 new after a finished day; words in different verses each review; debug links for checking.',
+    asOf: '2026-10-25',
+    headline: 'New: Learning now means met but not yet recalled on a later day, so all four stages show; Practice? pad on Write cards; Review 10 / Write 10 / Meet 5 new.',
     stats: [
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '128' },
+      { label: 'tests passing', value: '130' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -103,6 +103,7 @@ const BOARD = {
         { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
         { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
         { t: 'After a finished day: “Review 10” (review only), “Write 10” (Write the Hebrew cards only, for words already met) and “Meet 5 new” (its own Meet round and stars; back to the usual number tomorrow)', s: 'done' },
+        { t: 'Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Learning was always 0)', s: 'done' },
         { t: '“Practice?” under a revealed Write the Hebrew card: a second pad to copy either form, ungraded', s: 'done' },
         { t: 'Debug links (?debug=fresh, today, done, write, card) on scratch storage, so checks skip the day’s cards and never touch progress', s: 'done' },
         { t: 'Variety: in-verse, Another form, Which word? and Write cards move to another of the word’s verses each review (158 words have more than one)', s: 'done' },
@@ -118,6 +119,8 @@ const BOARD = {
       advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
+    { id: 't11', date: '2026-10-25', title: 'Where your words are',
+      steps: 'Stats → Where your words are. Words met in the last day or two now show as Learning (yellow) until you recall them on a later day, when they become Graduated. Solid is unchanged.' },
     { id: 't10', date: '2026-10-24', title: 'Practice? on a Write card',
       steps: 'On a Write the Hebrew card, press I have an answer, then tap “Practice?” under the form in the verse: a second pad to copy the dictionary form or the form in the verse. It is not graded. To see one straight away without touching your progress: add ?debug=write&practice=1 to the site address.' },
     { id: 't9', date: '2026-10-24', title: 'The same word, a different verse',
