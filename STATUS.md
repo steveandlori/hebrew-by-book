@@ -103,6 +103,7 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 Day 1 at 10 new words is about 60 card views (each new card needs three clean recalls), and by day 7 about 150 a day,
 since reviews of earlier words stack up before their gaps grow. If that is too much, 5 new words a day roughly halves it
 (Settings). The gaps grow quickly once words are Solid, so the load peaks and then falls; the simulation stopped at day 7.
+Settled (Steve, 2026-10-24): 10 new words a day "feels right" for Ruth, with Learn 5 new words for days he wants more.
 
 ## Things found along the way
 
