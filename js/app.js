@@ -245,12 +245,12 @@ function startSession() {
 // Write the Hebrew set to Off keeps those cards out of every queue.
 const writeOn = c => c.kind !== 'write' || state.settings.writeAfter > 0;
 
-// Study 10 more: cards already met, soonest due first, ahead of schedule. New words are never slipped in
+// Review 10: cards already met, soonest due first, ahead of schedule. New words are never slipped in
 // here; they are their own choice (Learn 5 new words), so the day's number stays what Steve set.
 function studyAhead(n = 10) {
   const at = now();
   const ahead = DECK.filter(c => writeOn(c) && !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
-  if (!ahead.length) { toast('Nothing to study ahead yet.'); return; }
+  if (!ahead.length) { toast('Nothing to review yet.'); return; }
   session.queue = shuffle(ahead);
   session.total = session.done + session.queue.length;
   renderStudy();
@@ -268,7 +268,7 @@ function learnMoreWords() {
 // The buttons under a finished day: more review, and more new words while any are left.
 function moreButtonsHTML(readLabel) {
   const left = wordsLeftToMeet();
-  return `<div class="row"><button class="btn" id="ahead">Study 10 more</button>${left ? `<button class="btn" id="more-words">Learn ${Math.min(MORE_WORDS, left)} new word${Math.min(MORE_WORDS, left) === 1 ? '' : 's'}</button>` : ''}<a class="btn btn-quiet" href="#read">${readLabel}</a></div>`;
+  return `<div class="row"><button class="btn" id="ahead">Review 10</button>${left ? `<button class="btn" id="more-words">Learn ${Math.min(MORE_WORDS, left)} new word${Math.min(MORE_WORDS, left) === 1 ? '' : 's'}</button>` : ''}<a class="btn btn-quiet" href="#read">${readLabel}</a></div>`;
 }
 function wireMoreButtons() {
   $('#ahead').onclick = () => studyAhead(10);
