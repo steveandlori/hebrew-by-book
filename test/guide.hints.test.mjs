@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carryMeet, meetStep, meetStars, CLEAN_RECALLS, hintLadder, autoRating, nudgeFor, NUDGES, buildSnapshot, pruneSnapshots, revealLine } from '../js/guide.js';
+import { carryMeet, meetStep, meetStars, CLEAN_RECALLS, rotationIndex, hintLadder, autoRating, nudgeFor, NUDGES, buildSnapshot, pruneSnapshots, revealLine } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
 const item = { id: 'H559', he: 'אָמַר', gloss: 'to say', pos: 'V', tr: 'ʾāmar' };
@@ -113,4 +113,12 @@ test('carryMeet: a finished Meet stays finished; words met after it (Learn 5 new
   assert.equal(carryMeet(saved, 'd', new Map()).stars, 5);
   const more = carryMeet(saved, 'd', new Map([['b:recall', 'meet'], ['b:ctx', 'meet']]));
   assert.deepEqual(more, { day: 'd', ids: ['b:recall', 'b:ctx'], steps: {}, stars: 0 });
+});
+
+test('rotation: one place through the first session, then the next at each later review', () => {
+  assert.equal(rotationIndex(null), 0);
+  assert.equal(rotationIndex({ state: State.Learning, reps: 2 }), 0);          // inside Meet: same verse
+  assert.equal(rotationIndex({ state: State.Review, reps: CLEAN_RECALLS }), 1); // first review on a later day: a new one
+  assert.equal(rotationIndex({ state: State.Review, reps: CLEAN_RECALLS + 1 }), 2);
+  assert.equal(rotationIndex({ state: State.Relearning, reps: 6 }), 4);
 });

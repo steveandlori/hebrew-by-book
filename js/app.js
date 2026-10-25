@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, writePractice, introDayOf, laterRecalls, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, writePractice, rotationIndex, introDayOf, laterRecalls, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, variantFor, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -240,12 +240,15 @@ const session = {
   meetStars: 0, meetSteps: new Map(), whichStreak: 0,
 };
 
-function startSession() {
+// keepDone: the day's count of cards answered carries on (Meet 5 new rebuilds the session mid-day).
+// newWords: at most this many new words in the rebuilt session (Meet 5 new), however many today's number allows.
+function startSession({ keepDone = false, newWords = Infinity } = {}) {
   session.mode = 'today';
   session.day = store.todayKey();
-  session.done = 0; session.revealed = false; session.current = null;
+  if (!keepDone) session.done = 0;
+  session.revealed = false; session.current = null;
   session.meetStars = 0; session.meetSteps = new Map(); session.whichStreak = 0;
-  const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: newWordAllowance(), extra: extraAllowance(), writeAfter: state.settings.writeAfter });
+  const r = composeSession({ deck: DECK, getCard: cardState, isDue: id => isDue(id), newWords: Math.min(newWords, newWordAllowance()), extra: extraAllowance(), writeAfter: state.settings.writeAfter });
   session.queue = r.queue; session.phaseOf = r.phaseOf;
   // Stars earned earlier today survive a reload (josie-stats found they reset).
   const meet = carryMeet(state.meetDay, session.day, r.phaseOf);
@@ -262,7 +265,7 @@ function startSession() {
     state.dayStart = { day: session.day, stages: [...session.stagesBefore], v: 2 };
     persist();
   }
-  session.total = r.queue.length;
+  session.total = session.done + r.queue.length;
   renderStudy();
 }
 
@@ -296,9 +299,11 @@ function writeAhead() {
 const MORE_WORDS = 5;
 const wordsLeftToMeet = () => DECK.filter(c => c.kind === 'recall' && isNew(c.id)).length;
 function learnMoreWords() {
-  state.moreWords = { day: store.todayKey(), n: moreWordsToday() + MORE_WORDS };
+  // Exactly five more than met so far today, whatever new words per day says now (review C3-3).
+  const met = (state.newIntroduced[store.todayKey()] || []).filter(id => id.endsWith(':recall')).length;
+  state.moreWords = { day: store.todayKey(), n: Math.max(moreWordsToday(), met + MORE_WORDS - state.settings.newPerDay) };
   persist();
-  startSession();
+  startSession({ keepDone: true, newWords: MORE_WORDS });
 }
 // The buttons under a finished day (Steve, 2026-10-24): Review 10, Write 10 while there are words to write,
 // Meet 5 new while any are left. No Read link: the Read tab is always in reach (Steve).
@@ -336,7 +341,7 @@ function nextCard() {
   dropPad();
   // Each review shows the card's next verse, so a word is met in more than one place.
   const card = session.queue.shift() || null;
-  session.current = card && variantFor(card, (cardState(card.id) || {}).reps || 0);
+  session.current = card && variantFor(card, rotationIndex(cardState(card.id)));
   session.shown++;
   renderStudy();
 }
@@ -598,7 +603,7 @@ function onKey(e) {
   if (route !== 'today') return;
   if ((session.pad && session.pad.isExpanded()) || (session.practicePad && session.practicePad.isExpanded())) return; // the full-screen pad is for writing; Escape closes it
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.target && /^(input|select|textarea|button|a)$/i.test(e.target.tagName)) return;
+  if (e.target && /^(input|select|textarea|button|a|summary)$/i.test(e.target.tagName)) return; // summary: Enter/Space open its fold
   const card = session.current;
   if (!card) return;
   if (!session.revealed) {
@@ -990,11 +995,12 @@ const DEBUG_SCENARIOS = {
   write: 'a Write the Hebrew card for the first word met',
   card: 'one card by id, e.g. &card=H559:ctx',
 };
-const DEBUG_HELP = 'words=N words already met (default 10); reps=N shows the card at its Nth review (its Nth verse); reveal=1 shows the answer; practice=1 also opens Practice?';
+const DEBUG_KNOWN = !!DEBUG && Object.hasOwn(DEBUG_SCENARIOS, DEBUG);
+const DEBUG_HELP = 'words=N words already met (default 10); reps=N shows the card’s Nth place (its Nth verse; real reviews start rotating only after the first session); reveal=1 shows the answer; practice=1 also opens Practice?';
 
 // Before the first route: met words, graded Got it three times on each Meet card, as a real day would.
 function debugSeed() {
-  if (!DEBUG || DEBUG === 'fresh') return;
+  if (!DEBUG_KNOWN || DEBUG === 'fresh') return;
   state.settings.introSeen = true;
   const words = DEBUG === 'today' ? 0 : Math.max(0, Number(DEBUG_PARAMS.get('words') ?? 10) || 0);
   state.dayStart = { day: store.todayKey(), stages: [...wordStages()], v: 2 };
@@ -1009,7 +1015,7 @@ function debugSeed() {
 
 // After the first route: put the asked-for screen in place of the day's session.
 function debugView() {
-  if (!DEBUG || DEBUG === 'fresh' || DEBUG === 'today') return;
+  if (!DEBUG_KNOWN || DEBUG === 'fresh' || DEBUG === 'today') return;
   const reveal = DEBUG_PARAMS.get('reveal') === '1' || DEBUG_PARAMS.get('practice') === '1';
   let cards = [];
   if (DEBUG === 'done') {
@@ -1022,7 +1028,7 @@ function debugView() {
   if (DEBUG === 'card') cards = DECK.filter(c => c.id === DEBUG_PARAMS.get('card'));
   if (!cards.length) { toast('Debug: no such card'); return; }
   dropPad();
-  Object.assign(session, { queue: [], done: 0, total: 1, revealed: false });
+  Object.assign(session, { queue: [], done: 0, total: 1, revealed: false, choices: null, picked: null, hints: 0, sketch: null });
   const reps = DEBUG_PARAMS.get('reps');
   session.writeForm = state.settings.writeForm;
   session.current = variantFor(cards[0], reps != null ? Number(reps) || 0 : (cardState(cards[0].id) || {}).reps || 0);
@@ -1034,7 +1040,7 @@ function debugView() {
 
 function debugBanner() {
   if (!DEBUG) return;
-  const known = DEBUG in DEBUG_SCENARIOS;
+  const known = DEBUG_KNOWN;
   const bar = document.createElement('div');
   bar.className = 'debug-bar';
   bar.setAttribute('role', 'note');

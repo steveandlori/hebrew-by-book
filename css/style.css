@@ -481,7 +481,7 @@ button.w:hover { background: var(--pen-soft); }
 .practice { margin: 10px 0 4px; }
 .practice summary { cursor: pointer; color: var(--pen); font-weight: 700; font-size: 15px; }
 .practice[open] summary { margin-bottom: 4px; }
-.practice .pad { margin-top: 6px; }
+.practice .pad:not(.expanded) { margin-top: 6px; }
 .alike { margin-top: 8px; padding: 8px 12px; border-inline-start: 3px solid var(--pen); background: var(--pen-soft); border-radius: 0 8px 8px 0; font-size: 14px; }
 .alike p { margin: 4px 0 0; }
 .reading .en, .kqbox .en { color: var(--ink); }

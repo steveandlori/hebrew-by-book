@@ -26,3 +26,14 @@ days, and the first later-day Good gives ~11. Solid also needs the in-verse and 
 at no more than the daily allowance.
 
 I have not run josie-stats; please confirm before adopting.
+
+## From our review 3, in case you adopt the matching features
+
+- **Meet 5 new** (our 2026-10-24 note): set the bonus so the round gets exactly five words,
+  `n = max(current, metToday + 5 - newPerDay)`, and rebuild with the new words capped at 5. Otherwise raising the
+  daily number first makes the button give more than it says.
+- **Varied verses/examples per review:** key the rotation on reviews after the first session, not on FSRS `reps`.
+  `reps` counts the learning steps, so a new card changed example every few minutes inside Meet.
+- **`onKey`:** if you ever add `<details>`, put `summary` in the ignore list (your app.js:527). Otherwise Enter or
+  Space on a summary clicks the grade button when an auto-grade is showing. You have no `<details>` today, so this does
+  not bite yet.

@@ -195,6 +195,14 @@ export function writePractice({ deck, getCard, n = 10, writeAfter = WRITE_READY_
 // A new card leaves the session after this many clean recalls (the scheduler's three learning steps).
 export const CLEAN_RECALLS = 3;
 
+// Which of a card's places it shows (deck.js variantFor): the first while the card is new or in its first
+// session's steps, then the next one at each later review. Meeting a word keeps one verse for its three recalls;
+// variety is for coming back to it (review C3-1, 2026-10-25: rotating inside Meet showed new spellings minutes apart).
+export function rotationIndex(fsrsCard) {
+  if (!fsrsCard || fsrsCard.state === State.New || fsrsCard.state === State.Learning) return 0;
+  return Math.max(0, (fsrsCard.reps || 0) - CLEAN_RECALLS + 1);
+}
+
 // One Meet card's progress after a grade: Got it or Easy moves it a step, Not yet sends it back to the start
 // (as the scheduler does), Partly holds it; a card that has left its learning steps is complete.
 export function meetStep(prev, rating, graduated) {

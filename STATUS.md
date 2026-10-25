@@ -103,6 +103,9 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     Which word? through every occurrence, the recall hint verse likewise, and Write through every verse where the
     word can be blanked without giving it away. 158 of the 287 words occur more than once; the 129 that occur once
     still have only their one verse.
+    Amended after review 3 (C3-1, 2026-10-25): a card keeps its first place through its first session's three
+    recalls and moves on at each later review (`rotationIndex`), so meeting a word does not show three verses or
+    spellings in ten minutes. Veto-able.
 24. **Practice?** (Steve, 2026-10-24): under the form in the verse on a revealed Write the Hebrew card, a folded
     "Practice?" opens a second pad to copy the dictionary form or the form in the verse. Ungraded; its title shows
     the form(s) to copy, so they stay in view when it goes full screen.
