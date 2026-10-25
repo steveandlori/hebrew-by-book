@@ -85,6 +85,11 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 21. **Listening**: each chapter in Read links to Haktuvim (Bible Society in Israel), whose chapter pages have a native
     reader's recording (Steve, 2026-10-23). Link form `https://haktuvim.co.il/study/<OSIS book>.<chapter>`, from Steve.
     Sefaria and STEP Bible stay in the word pop-ups.
+22. **More after the day's work** (Steve, 2026-10-24): two buttons. "Study 10 more" is review only: the 10 cards
+    already met that come due soonest (it used to slip in new words when fewer than 10 were waiting). "Learn 5 new
+    words" raises today's new-word number by five (stored as `moreWords`, so it survives a reload; tomorrow is back
+    to the usual number) and gives those words a Meet round of their own, with its own five stars: a finished Meet
+    stays finished (`carryMeet`).
 
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 

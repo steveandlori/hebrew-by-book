@@ -74,6 +74,8 @@ test('allowances count new words by recall cards and extra cards by form/which',
   const ids = ['H1:recall', 'H1:ctx', 'H2:recall', 'H3:form:08abc', 'H4:which'];
   assert.deepEqual(allowances(ids, 10), { words: 8, extra: 8 });
   assert.deepEqual(allowances(Array.from({ length: 12 }, (_, i) => `H${i}:recall`), 10), { words: 0, extra: 10 });
+  // Learn 5 new words raises the words only
+  assert.deepEqual(allowances(Array.from({ length: 10 }, (_, i) => `H${i}:recall`), 10, 5), { words: 5, extra: 10 });
 });
 
 test('a word in its verse: English first, a one-line breakdown, the full parse folded away', () => {

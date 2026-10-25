@@ -99,11 +99,18 @@ test('carryMeet: a same-day rebuild restores Meet ids, steps and stars; a new da
   assert.deepEqual(next, { day: 'd2', ids: ['y'], steps: {}, stars: 0 });
 });
 
-test('carryMeet: stars earned stay unless Meet grew, then only as far as the larger round supports', () => {
-  const saved = { day: 'd', ids: ['a:recall', 'a:ctx'], steps: { 'a:recall': 3, 'a:ctx': 3 }, stars: 5 };
-  const same = carryMeet(saved, 'd', new Map());
-  assert.equal(same.stars, 5);
-  const grown = carryMeet(saved, 'd', new Map([['b:recall', 'meet'], ['b:ctx', 'meet']]));
-  assert.equal(grown.stars, meetStars(Object.values(saved.steps), 4));   // 6 of 12 recalls: 2 stars
+test('carryMeet: stars earned stay unless an unfinished Meet grew, then only as far as the larger round supports', () => {
+  const saved = { day: 'd', ids: ['a:recall', 'a:ctx', 'c:recall'], steps: { 'a:recall': 3, 'a:ctx': 3, 'c:recall': 1 }, stars: 3 };
+  const phaseOf = () => new Map([['c:recall', 'recall']]);   // c still in learning
+  assert.equal(carryMeet(saved, 'd', phaseOf()).stars, 3);
+  const grown = carryMeet(saved, 'd', new Map([...phaseOf(), ['b:recall', 'meet'], ['b:ctx', 'meet']]));
+  assert.equal(grown.stars, meetStars(Object.values(saved.steps), 5));   // 7 of 15 recalls: 2 stars
   assert.equal(grown.stars, 2);
+});
+
+test('carryMeet: a finished Meet stays finished; words met after it (Learn 5 new words) get a round of their own', () => {
+  const saved = { day: 'd', ids: ['a:recall', 'a:ctx'], steps: { 'a:recall': 3, 'a:ctx': 3 }, stars: 5 };
+  assert.equal(carryMeet(saved, 'd', new Map()).stars, 5);
+  const more = carryMeet(saved, 'd', new Map([['b:recall', 'meet'], ['b:ctx', 'meet']]));
+  assert.deepEqual(more, { day: 'd', ids: ['b:recall', 'b:ctx'], steps: {}, stars: 0 });
 });

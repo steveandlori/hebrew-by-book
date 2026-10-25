@@ -82,7 +82,8 @@ function cardState(id) { return hydrate(state.cards[id]); }
 function isDue(id, at = now()) { const c = cardState(id); return c && c.due <= at; }
 function isNew(id) { return !state.cards[id]; }
 
-const todaysAllowances = () => allowances(state.newIntroduced[store.todayKey()] || [], state.settings.newPerDay);
+const moreWordsToday = () => (state.moreWords && state.moreWords.day === store.todayKey() ? state.moreWords.n : 0);
+const todaysAllowances = () => allowances(state.newIntroduced[store.todayKey()] || [], state.settings.newPerDay, moreWordsToday());
 const newWordAllowance = () => todaysAllowances().words;
 const extraAllowance = () => todaysAllowances().extra;
 
@@ -244,14 +245,35 @@ function startSession() {
 // Write the Hebrew set to Off keeps those cards out of every queue.
 const writeOn = c => c.kind !== 'write' || state.settings.writeAfter > 0;
 
+// Study 10 more: cards already met, soonest due first, ahead of schedule. New words are never slipped in
+// here; they are their own choice (Learn 5 new words), so the day's number stays what Steve set.
 function studyAhead(n = 10) {
   const at = now();
   const ahead = DECK.filter(c => writeOn(c) && !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
-  const extraNew = ahead.length < n ? DECK.filter(c => isNew(c.id) && c.kind === 'recall').slice(0, n - ahead.length) : [];
-  session.queue = shuffle([...ahead, ...extraNew]);
+  if (!ahead.length) { toast('Nothing to study ahead yet.'); return; }
+  session.queue = shuffle(ahead);
   session.total = session.done + session.queue.length;
-  if (!session.queue.length) { toast('Nothing left to study ahead. Every card is in rotation.'); return; }
   renderStudy();
+}
+
+// Learn 5 new words: raises today's new-word number by five and rebuilds the session, so the words get a Meet
+// round of their own (with its stars) and the raise survives a reload. Tomorrow is back to the usual number.
+const MORE_WORDS = 5;
+const wordsLeftToMeet = () => DECK.filter(c => c.kind === 'recall' && isNew(c.id)).length;
+function learnMoreWords() {
+  state.moreWords = { day: store.todayKey(), n: moreWordsToday() + MORE_WORDS };
+  persist();
+  startSession();
+}
+// The buttons under a finished day: more review, and more new words while any are left.
+function moreButtonsHTML(readLabel) {
+  const left = wordsLeftToMeet();
+  return `<div class="row"><button class="btn" id="ahead">Study 10 more</button>${left ? `<button class="btn" id="more-words">Learn ${Math.min(MORE_WORDS, left)} new word${Math.min(MORE_WORDS, left) === 1 ? '' : 's'}</button>` : ''}<a class="btn btn-quiet" href="#read">${readLabel}</a></div>`;
+}
+function wireMoreButtons() {
+  $('#ahead').onclick = () => studyAhead(10);
+  const m = $('#more-words');
+  if (m) m.onclick = learnMoreWords;
 }
 
 // Forget the in-memory session (after import or Start over) so Today rebuilds from the new state.
@@ -386,8 +408,8 @@ function renderStudy() {
     const nothingNew = newWordAllowance() === 0;
     view.innerHTML = `<div class="card done"><h2>All caught up</h2>
       <p style="margin-top:10px">${nothingNew ? `You have met today's ${state.settings.newPerDay} new words and nothing is due yet.` : 'Nothing is due right now.'}</p>
-      <div class="row"><button class="btn" id="ahead">Study 10 more</button><a class="btn btn-quiet" href="#read">Read ${esc(BOOK_NAME)}</a></div></div>`;
-    $('#ahead').onclick = () => studyAhead(10);
+      ${moreButtonsHTML(`Read ${esc(BOOK_NAME)}`)}</div>`;
+    wireMoreButtons();
     return;
   }
 
@@ -513,8 +535,8 @@ function renderWrapUp() {
     <div class="stats moved-stats">${tile(diff.met.length, diff.met.length === 1 ? 'word met' : 'words met', diff.met)}${tile(diff.graduated.length, 'graduated', diff.graduated)}${tile(diff.solid.length, 'now solid', diff.solid)}</div>
     <div class="pipeline-wrap">${pipelineHTML(countStages(after))}</div>
     <p style="margin-top:14px">${next ? `Next cards come due ${fmtDue(next)}.` : ''} Coming back tomorrow matters more than doing more today. Spacing is a big part of what makes this stick.</p>
-    <div class="row"><button class="btn" id="ahead">Study 10 more</button><a class="btn btn-quiet" href="#read">Read a verse</a></div></div>`;
-  $('#ahead').onclick = () => studyAhead(10);
+    ${moreButtonsHTML('Read a verse')}</div>`;
+  wireMoreButtons();
 }
 
 function onKey(e) {

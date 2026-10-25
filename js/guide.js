@@ -139,10 +139,11 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
 
 // What is left of today's allowances, given the card ids introduced today: new words (counted by their recall
 // card) and new deepen/tell-apart cards (form, write, which). In-verse cards finishing a meet use no allowance.
-export function allowances(introducedToday, newPerDay) {
+// `moreWords` = new words asked for beyond the daily number (Learn 5 new words); it adds words only.
+export function allowances(introducedToday, newPerDay, moreWords = 0) {
   const words = introducedToday.filter(id => id.endsWith(':recall')).length;
   const extra = introducedToday.filter(id => /:(form|which|write)(:|$)/.test(id)).length;
-  return { words: Math.max(0, newPerDay - words), extra: Math.max(0, newPerDay - extra) };
+  return { words: Math.max(0, newPerDay + moreWords - words), extra: Math.max(0, newPerDay - extra) };
 }
 
 /* ───────────────────────── Meet stars ───────────────────────── */
@@ -171,12 +172,15 @@ export function meetStars(steps, totalCards) {
 // josie-stats (its handoff, 2026-10-23). `saved` is the stored {day, ids, steps, stars}; `phaseOf` is the new
 // session's map, changed in place: today's Meet cards that are still queued go back under Meet (the composer
 // files graded ones still in learning under Recall). A saved card that was never graded and is no longer
-// queued is dropped, or it would hold the stars short of 5.
+// queued is dropped, or it would hold the stars short of 5. A finished round stays finished: new words met
+// after it (Learn 5 new words) start a round of their own, with its own five stars.
 export function carryMeet(saved, day, phaseOf) {
   const fresh = [...phaseOf].filter(([, p]) => p === 'meet').map(([id]) => id);
   if (!saved || saved.day !== day) return { day, ids: fresh, steps: {}, stars: 0 };
-  for (const id of saved.ids) if (phaseOf.has(id)) phaseOf.set(id, 'meet');
   const kept = saved.ids.filter(id => id in saved.steps || phaseOf.has(id));
+  const finished = kept.length > 0 && kept.every(id => (saved.steps[id] || 0) >= CLEAN_RECALLS);
+  if (finished && fresh.some(id => !saved.ids.includes(id))) return { day, ids: fresh, steps: {}, stars: 0 };
+  for (const id of saved.ids) if (phaseOf.has(id)) phaseOf.set(id, 'meet');
   const ids = [...new Set([...kept, ...fresh])];
   // Meet grew since (more new words a day): a bigger round, so stars are recounted for it and may go down,
   // rather than showing "Meet complete" while new cards remain.

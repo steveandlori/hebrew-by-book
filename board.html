@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-23',
-    headline: 'Your second round of feedback is live: הוּא/הִיא split, the pad keeps its size, evenly spaced gold stars in Meet, Write the Hebrew cards, and a Haktuvim audio link on every chapter.',
+    asOf: '2026-10-24',
+    headline: 'New: “Learn 5 new words” after a finished day, with a Meet round and stars of its own. “Study 10 more” is now review only.',
     stats: [
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '124' },
+      { label: 'tests passing', value: '125' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -102,6 +102,7 @@ const BOARD = {
         { t: 'Notes for josie-stats (pad bug it shares; Meet stars and the bunching lesson) copied to its docs/handoff/', s: 'done' },
         { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
         { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
+        { t: '“Learn 5 new words” after a finished day (its own Meet round and stars; back to the usual number tomorrow); “Study 10 more” is review only', s: 'done' },
       ] },
     { id: 'm3', title: 'More books', status: 'later',
       summary: 'Jonah, Genesis chapters, Psalms. The pipeline takes a book name; the app needs a book picker and per-book pace (Steve: 5 a day may suit a new book).',
@@ -114,6 +115,8 @@ const BOARD = {
       advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
+    { id: 't8', date: '2026-10-24', title: 'Learn 5 new words',
+      steps: 'Finish the day’s session. Under it: “Study 10 more” (review of words already met, ahead of schedule) and “Learn 5 new words”, which starts a fresh Meet round of five words with its own five stars. Press it again for five more; tomorrow is back to your usual number.' },
     { id: 't7', date: '2026-10-23', title: 'Read, then listen on Haktuvim',
       steps: 'Read → any chapter → “Listen to chapter N on Haktuvim” (under the chapter numbers). It opens that chapter on haktuvim.co.il with its audio player at the top.' },
     { id: 't6', date: '2026-10-23', title: 'Stars in Meet; Write the Hebrew',
