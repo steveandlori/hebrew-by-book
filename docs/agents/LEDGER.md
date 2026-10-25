@@ -54,3 +54,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-24 | Practice? pad on revealed Write cards (Steve); debug links ?debug=fresh/today/done/write/card on scratch storage (Steve's idea). Browser: every scenario, real storage untouched, no console errors | coordinator | js 78 |
 | 2026-10-25 | Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Steve chose option 1). Browser: crafted two-day history shows 277/8/2/0 with the yellow segment | coordinator | js 80 |
 | 2026-10-25 | Review 3 (Fable, adversarial; first run stalled on a dropped connection, rerun): 7 findings, all VERIFIED; all fixed and browser-checked | general-purpose (fable) + coordinator | js 81; code-3.md |
+| 2026-10-25 | Research on breaks/backlogs/fading started (Steve: go ahead with research and improvements); brief-research-breaks.md | general-purpose | running |
