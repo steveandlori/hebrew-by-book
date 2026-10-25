@@ -20,6 +20,14 @@
   rendering of each word form (Steve asked for these on 2026-10-22: "and she walked/went").
 - Nothing inherited counts as verified. Do not trust counts or claims in this brief; check them.
 
+## Debug links
+
+To check one part of the app, open it directly instead of working through a day's cards: `?debug=<scenario>`
+(`fresh`, `today`, `done`, `write`, `card&card=<id>`; add `words=N`, `reps=N`, `reveal=1`, `practice=1`).
+`?debug=help` lists them on the page. They run on scratch storage (`hebrew-by-book-debug`), wiped at each load, so
+they never touch real progress. A yellow strip at the top marks a debug page. Note that the Playwright browser
+keeps storage between runs: a plain URL on a port used before may carry an earlier run's progress.
+
 ## Test servers
 
 Stop only the server you started, by its PID or its task. Never kill every `python.exe` (a josie-stats QA agent did,

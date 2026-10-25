@@ -67,6 +67,10 @@ python pipeline/build.py Ruth      # rebuilds data/ruth.js
 python scripts/serve.py            # http://127.0.0.1:8765/ with caching off
 ```
 
+Debug links open one part of the app directly, on scratch storage wiped at each load (real progress is never
+touched): `?debug=fresh`, `today`, `done`, `write`, or `card&card=H559:ctx`; add `words=N`, `reps=N`, `reveal=1`,
+`practice=1`. `?debug=help` lists them.
+
 Tests:
 
 ```

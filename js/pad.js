@@ -2,7 +2,8 @@
 // it. Writing is a commitment, which keeps self-grading honest. "Write bigger" expands the pad to a
 // nearly full-screen surface for fingers and styluses. Pointer Events cover finger, stylus and mouse.
 
-export function createPad(container, { height = 150, title = '', onAnswer = null } = {}) {
+// titleHTML: markup for the title, built by the caller from escaped text (Hebrew needs its own span to sit right).
+export function createPad(container, { height = 150, title = '', titleHTML = null, onAnswer = null } = {}) {
   container.innerHTML = `<div class="pad">
     <div class="pad-top"><span class="pad-title"></span><button class="btn btn-small" type="button" data-pad-collapse>Done</button></div>
     <span class="pad-placeholder" aria-hidden="true">Write your answer here</span>
@@ -12,7 +13,8 @@ export function createPad(container, { height = 150, title = '', onAnswer = null
   const pad = container.querySelector('.pad');
   const canvas = container.querySelector('canvas');
   const ctx = canvas.getContext('2d');
-  pad.querySelector('.pad-title').textContent = title;
+  if (titleHTML) pad.querySelector('.pad-title').innerHTML = titleHTML;
+  else pad.querySelector('.pad-title').textContent = title;
   if (!onAnswer) pad.querySelector('[data-pad-answer]').remove();
 
   // Ink is kept as vector paths in "ink" coordinates (CSS px at full size). Each surface shows the ink at

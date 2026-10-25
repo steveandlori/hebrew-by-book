@@ -345,6 +345,7 @@ p { margin: 0; }
 .pad.expanded { position: fixed; inset: 0; z-index: 30; margin: 0; border: 0; border-radius: 0; display: flex; flex-direction: column; background: var(--paper); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 .pad.expanded .pad-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--card); }
 .pad-title { font-weight: 700; font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pad-title .pad-heb { font-size: 26px; font-weight: 400; line-height: 1.2; unicode-bidi: isolate; }
 .pad.expanded canvas { flex: 1; min-height: 0; }
 .pad.expanded .pad-bar { padding: 10px 14px; border-top: 1px solid var(--line); background: var(--card); }
 .pad.expanded [data-pad-expand] { display: none; }
@@ -477,6 +478,10 @@ button.w:hover { background: var(--pen-soft); }
 .bsep { color: var(--ink-3); }
 .fullparse { margin-top: 6px; font-size: 14px; }
 .fullparse summary { cursor: pointer; color: var(--pen); font-size: 13px; }
+.practice { margin: 10px 0 4px; }
+.practice summary { cursor: pointer; color: var(--pen); font-weight: 700; font-size: 15px; }
+.practice[open] summary { margin-bottom: 4px; }
+.practice .pad { margin-top: 6px; }
 .alike { margin-top: 8px; padding: 8px 12px; border-inline-start: 3px solid var(--pen); background: var(--pen-soft); border-radius: 0 8px 8px 0; font-size: 14px; }
 .alike p { margin: 4px 0 0; }
 .reading .en, .kqbox .en { color: var(--ink); }
@@ -575,3 +580,8 @@ body.sheet-open .view { padding-bottom: 72dvh; }
 
 .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
 @media (forced-colors: active) { .stars i { color: CanvasText; -webkit-text-stroke: 0; } .stars i:not(.on) { opacity: .3; } }
+
+/* debug links (?debug=…): a plain strip so a scratch session is never mistaken for real progress */
+.debug-bar { background: #FFF3B0; color: #3A2E00; border-bottom: 2px dashed #B08800; padding: 6px 16px; font-size: 13px; }
+.debug-bar a { color: inherit; text-decoration: underline; }
+.debug-bar ul { margin: 4px 0 0 18px; }

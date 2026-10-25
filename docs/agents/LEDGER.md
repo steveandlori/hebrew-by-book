@@ -51,3 +51,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-24 | Write 10 button (Steve): Write the Hebrew cards only, for met words; Learn 5 new words renamed Meet 5 new. Browser at 390 px: buttons wrap, no sideways scroll; Write 10 served 10 write cards | coordinator | js 78 |
 | 2026-10-24 | Read link dropped from the finished-day buttons (Steve: the Read tab is always there); 390 px check: three buttons, no sideways scroll | coordinator | js 78 |
 | 2026-10-24 | Fixed: How it works opened on every fresh load (#method kept in bookmark/tab); first visit, reload, #method bookmark and How tab checked in Playwright; josie-stats note item 3 | coordinator | js 78 |
+| 2026-10-24 | Practice? pad on revealed Write cards (Steve); debug links ?debug=fresh/today/done/write/card on scratch storage (Steve's idea). Browser: every scenario, real storage untouched, no console errors | coordinator | js 78 |

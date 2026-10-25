@@ -1,6 +1,7 @@
 // Progress and settings live in the browser (localStorage). Export/import moves them between devices.
 
-const KEY = 'hebrew-by-book-v1';
+let KEY = 'hebrew-by-book-v1';
+const SCRATCH_KEY = 'hebrew-by-book-debug';
 const APP = 'hebrew-by-book';
 
 const DEFAULT_SETTINGS = {
@@ -66,6 +67,12 @@ export function importState(text) {
   const s = JSON.parse(text);
   if (!s || s.app !== APP) throw new Error('That file is not a Hebrew by Book progress file.');
   return shape(s);
+}
+
+// Debug links (?debug=…) work on their own storage, wiped at each load, so real progress is never touched.
+export function useScratchStorage() {
+  KEY = SCRATCH_KEY;
+  try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
 }
 
 export function resetState() {

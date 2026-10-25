@@ -71,6 +71,12 @@ const verseLinks = ref => {
 
 /* ───────────────────────── state ───────────────────────── */
 
+// Debug links (Steve, 2026-10-24): ?debug=<scenario> opens one part of the app directly, for checking it without
+// working through a day's cards. They use scratch storage, wiped at each load; see DEBUG_SCENARIOS near the end.
+const DEBUG_PARAMS = new URLSearchParams(location.search);
+const DEBUG = DEBUG_PARAMS.get('debug');
+if (DEBUG) store.useScratchStorage();
+
 let state = store.loadState();
 let scheduler = makeScheduler(state.settings);
 const now = () => new Date();
@@ -195,7 +201,7 @@ function backHTML(card) {
       return `${wordSummaryHTML(w)}${lookalikeHTML(w)}${glossNote(w)}<h3>Its forms in ${esc(BOOK_NAME)}</h3>${formsListHTML(w, 6)}${sourceLine()}`;
     case 'write': {
       const t = BOOK.tokens.get(card.token);
-      return `<h3>Dictionary form</h3>${wordSummaryHTML(w)}<h3>In ${esc(refLabel(verseOfToken(card.token).ref))}</h3>${formHTML(t)}${lookalikeHTML(w)}${sourceLine()}`;
+      return `<h3>Dictionary form</h3>${wordSummaryHTML(w)}<h3>In ${esc(refLabel(verseOfToken(card.token).ref))}</h3>${formHTML(t)}${PRACTICE_HTML}${lookalikeHTML(w)}${sourceLine()}`;
     }
     case 'ctx':
     case 'form':
@@ -209,11 +215,15 @@ function backHTML(card) {
   }
 }
 
+// After a Write the Hebrew card is revealed: a second pad, folded away, to copy either form with the answer in
+// view (Steve, 2026-10-24). Ungraded; the card's grade is still the first attempt's.
+const PRACTICE_HTML = `<details class="practice"><summary>Practice?</summary><p class="small muted">Copy the dictionary form or the form in the verse. This is not graded.</p><div id="practicehost"></div></details>`;
+
 /* ───────────────────────── study session ───────────────────────── */
 
 const session = {
   queue: [], done: 0, total: 0, mode: 'today', revealed: false, current: null, choices: null, picked: null,
-  hints: 0, pad: null, sketch: null, shown: 0, phaseOf: null, counts: null, stagesBefore: null,
+  hints: 0, pad: null, practicePad: null, sketch: null, shown: 0, phaseOf: null, counts: null, stagesBefore: null,
   meetStars: 0, meetSteps: new Map(), whichStreak: 0,
 };
 
@@ -299,6 +309,7 @@ function resetSession() {
 
 function dropPad() {
   if (session.pad) { session.pad.destroy(); session.pad = null; }
+  if (session.practicePad) { session.practicePad.destroy(); session.practicePad = null; }
 }
 
 // A Write card keeps the form it was first shown with, even if the setting changes mid-card.
@@ -508,6 +519,19 @@ function renderStudy() {
     if (session.sketch) session.pad.restore(session.sketch.ink);
   }
 
+  // A re-render replaced the card, so a practice pad from before is gone with it.
+  if (session.practicePad) { session.practicePad.destroy(); session.practicePad = null; }
+  const practice = $('#view details.practice');
+  // Made on first open (the canvas takes its size from a visible container). The title keeps both forms in view
+  // when the pad goes full screen over the answer.
+  if (practice) practice.addEventListener('toggle', () => {
+    if (practice.open && !session.practicePad) {
+      const lemma = lemmaText(card.item), form = tokText(BOOK.tokens.get(card.token));
+      const titleHTML = `Copy ${heb(lemma, 'pad-heb')}${form !== lemma ? ` or ${heb(form, 'pad-heb')}` : ''}`;
+      session.practicePad = createPad($('#practicehost'), { titleHTML, height: 190 });
+    }
+  });
+
   const reveal = $('#reveal');
   if (reveal) reveal.onclick = doReveal;
   const hint = $('#hint');
@@ -558,7 +582,7 @@ function renderWrapUp() {
 
 function onKey(e) {
   if (route !== 'today') return;
-  if (session.pad && session.pad.isExpanded()) return; // the full-screen pad is for writing; Escape closes it
+  if ((session.pad && session.pad.isExpanded()) || (session.practicePad && session.practicePad.isExpanded())) return; // the full-screen pad is for writing; Escape closes it
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target && /^(input|select|textarea|button|a)$/i.test(e.target.tagName)) return;
   const card = session.current;
@@ -942,9 +966,74 @@ function navigate() {
   if (!(route === 'read' && param && param.includes('.')) && !(route === 'words' && param)) window.scrollTo({ top: 0 });
 }
 
+/* ───────────────────────── debug links ───────────────────────── */
+
+// ?debug=<scenario>[&words=N][&card=<id>][&reps=N][&reveal=1][&practice=1]
+const DEBUG_SCENARIOS = {
+  fresh: 'a first visit (How it works first)',
+  today: 'a new day, nothing met yet',
+  done: 'the end of a day: words met, then the finished-day buttons',
+  write: 'a Write the Hebrew card for the first word met',
+  card: 'one card by id, e.g. &card=H559:ctx',
+};
+const DEBUG_HELP = 'words=N words already met (default 10); reps=N shows the card at its Nth review (its Nth verse); reveal=1 shows the answer; practice=1 also opens Practice?';
+
+// Before the first route: met words, graded Got it three times on each Meet card, as a real day would.
+function debugSeed() {
+  if (!DEBUG || DEBUG === 'fresh') return;
+  state.settings.introSeen = true;
+  const words = DEBUG === 'today' ? 0 : Math.max(0, Number(DEBUG_PARAMS.get('words') ?? 10) || 0);
+  state.dayStart = { day: store.todayKey(), stages: [...stagesByItem(DECK, cardState)] };
+  for (const l of BOOK.vocab.slice(0, words)) for (const kind of ['recall', 'ctx']) {
+    const c = DECK.find(x => x.id === `${l.id}:${kind}`);
+    if (c) for (let i = 0; i < 3; i++) applyGrade(c, 3);
+  }
+  invalidateStages();
+  persist();
+  try { history.replaceState(null, '', `${location.search}#today`); } catch (e) { /* ignore */ }
+}
+
+// After the first route: put the asked-for screen in place of the day's session.
+function debugView() {
+  if (!DEBUG || DEBUG === 'fresh' || DEBUG === 'today') return;
+  const reveal = DEBUG_PARAMS.get('reveal') === '1' || DEBUG_PARAMS.get('practice') === '1';
+  let cards = [];
+  if (DEBUG === 'done') {
+    dropPad();
+    Object.assign(session, { queue: [], current: null, done: Math.max(1, session.done) });
+    renderStudy();
+    return;
+  }
+  if (DEBUG === 'write') cards = DECK.filter(c => c.kind === 'write' && c.item.id === BOOK.vocab[0].id);
+  if (DEBUG === 'card') cards = DECK.filter(c => c.id === DEBUG_PARAMS.get('card'));
+  if (!cards.length) { toast('Debug: no such card'); return; }
+  dropPad();
+  Object.assign(session, { queue: [], done: 0, total: 1, revealed: false });
+  const reps = DEBUG_PARAMS.get('reps');
+  session.writeForm = state.settings.writeForm;
+  session.current = variantFor(cards[0], reps != null ? Number(reps) || 0 : (cardState(cards[0].id) || {}).reps || 0);
+  session.revealed = reveal;
+  renderStudy();
+  const d = $('#view details.practice');
+  if (d && DEBUG_PARAMS.get('practice') === '1') d.open = true;
+}
+
+function debugBanner() {
+  if (!DEBUG) return;
+  const known = DEBUG in DEBUG_SCENARIOS;
+  const bar = document.createElement('div');
+  bar.className = 'debug-bar';
+  bar.setAttribute('role', 'note');
+  bar.innerHTML = `<b>Debug: ${esc(DEBUG)}</b>${known ? ` (${esc(DEBUG_SCENARIOS[DEBUG])})` : ' is not a scenario'}. Scratch progress, wiped on reload. <a href="${esc(location.pathname)}">Leave debug</a>
+    ${known ? '' : `<ul>${Object.entries(DEBUG_SCENARIOS).map(([k, v]) => `<li><a href="?debug=${k}">${k}</a>: ${esc(v)}</li>`).join('')}</ul><p>${esc(DEBUG_HELP)}</p>`}`;
+  document.body.prepend(bar);
+}
+
 applyHebSize();
 window.addEventListener('hashchange', navigate);
 document.addEventListener('keydown', onKey);
+debugBanner();
+debugSeed();
 // The first visit leaves #method in the address, and a bookmark, home-screen icon or restored tab keeps it, so
 // every later load opened How it works (Steve, 2026-10-24). Once it has been seen, a fresh load opens Today;
 // the How tab still opens it on demand.
@@ -952,3 +1041,4 @@ if (state.settings.introSeen && location.hash === '#method') {
   try { history.replaceState(null, '', '#today'); } catch (e) { /* ignore */ }
 }
 navigate();
+debugView();
