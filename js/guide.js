@@ -146,6 +146,20 @@ export function allowances(introducedToday, newPerDay, moreWords = 0) {
   return { words: Math.max(0, newPerDay + moreWords - words), extra: Math.max(0, newPerDay - extra) };
 }
 
+// Write 10 (Steve, 2026-10-24: "a review, but with concentrated writing"): Write the Hebrew cards for words
+// already met, and nothing else. Cards already started come first, soonest due; then ones not yet started, for
+// words read in place `writeAfter` times before the rest, each in the order the words were met. None when Write
+// the Hebrew is Off.
+export function writePractice({ deck, getCard, n = 10, writeAfter = WRITE_READY_VIEWS }) {
+  if (!writeAfter) return [];
+  const stages = stagesByItem(deck, getCard);
+  const writes = deck.filter(c => c.kind === 'write' && stages.get(c.item.id) !== 'new');
+  const started = writes.filter(c => getCard(c.id)).sort((a, b) => new Date(getCard(a.id).due) - new Date(getCard(b.id).due));
+  const fresh = writes.filter(c => !getCard(c.id));
+  const ready = c => inPlaceViews(deck.filter(x => x.item.id === c.item.id), getCard) >= writeAfter;
+  return [...started, ...fresh.filter(ready), ...fresh.filter(c => !ready(c))].slice(0, n);
+}
+
 /* ───────────────────────── Meet stars ───────────────────────── */
 
 // A new card leaves the session after this many clean recalls (the scheduler's three learning steps).

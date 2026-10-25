@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { composeSession } from '../js/guide.js';
+import { composeSession, writePractice } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
 const w = (id, kinds = ['recall', 'ctx', 'form']) => kinds.map(k => ({ id: `${id}:${k}`, kind: k, item: { id } }));
@@ -122,4 +122,20 @@ test('writeAfter sets the unlock threshold, and 0 drops write cards entirely', (
   const started = { ...one, 'a:write': rev() };
   const off = composeSession({ deck, getCard: get(started), isDue: () => true, newWords: 0, extra: 5, writeAfter: 0, rng });
   assert.ok(!off.queue.some(c => c.kind === 'write'));
+});
+
+test('Write 10: write cards of met words only; started ones soonest due first, then fresh ones, ready before not', () => {
+  const kinds = ['recall', 'ctx', 'write'];
+  const deck = ['a', 'b', 'c', 'd', 'e'].flatMap(id => w(id, kinds));
+  const at = t => ({ ...rev(), due: new Date(t) });
+  const cards = {
+    'a:recall': rev(), 'a:ctx': { ...rev(), reps: 3 }, 'a:write': at(2000),
+    'b:recall': rev(), 'b:ctx': { ...rev(), reps: 3 }, 'b:write': at(1000),
+    'c:recall': rev(), 'c:ctx': { ...rev(), reps: 2 },                       // ready to write, not started
+    'd:recall': rev(), 'd:ctx': { ...rev(), reps: 0 },                       // met, not yet read in place twice
+  };                                                                         // e: not met
+  const getCard = id => cards[id] || null;
+  assert.deepEqual(writePractice({ deck, getCard, n: 10, writeAfter: 2 }).map(c => c.id), ['b:write', 'a:write', 'c:write', 'd:write']);
+  assert.deepEqual(writePractice({ deck, getCard, n: 3, writeAfter: 2 }).map(c => c.id), ['b:write', 'a:write', 'c:write']);
+  assert.deepEqual(writePractice({ deck, getCard, n: 10, writeAfter: 0 }), []);   // Write the Hebrew is Off
 });

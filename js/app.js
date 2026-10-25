@@ -1,7 +1,7 @@
 import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
-import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
+import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, writePractice, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
 import { indexBook, buildDeck, formsOf, variantFor, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
@@ -246,7 +246,7 @@ function startSession() {
 const writeOn = c => c.kind !== 'write' || state.settings.writeAfter > 0;
 
 // Review 10: cards already met, soonest due first, ahead of schedule. New words are never slipped in
-// here; they are their own choice (Learn 5 new words), so the day's number stays what Steve set.
+// here; they are their own choice (Meet 5 new), so the day's number stays what Steve set.
 function studyAhead(n = 10) {
   const at = now();
   const ahead = DECK.filter(c => writeOn(c) && !isNew(c.id) && !isDue(c.id, at)).sort((a, b) => cardState(a.id).due - cardState(b.id).due).slice(0, n);
@@ -256,7 +256,18 @@ function studyAhead(n = 10) {
   renderStudy();
 }
 
-// Learn 5 new words: raises today's new-word number by five and rebuilds the session, so the words get a Meet
+// Write 10: Write the Hebrew cards only, for words already met (writePractice), so a review can be all writing.
+const WRITE_MORE = 10;
+const writeCards = () => writePractice({ deck: DECK, getCard: cardState, n: WRITE_MORE, writeAfter: state.settings.writeAfter });
+function writeAhead() {
+  const cards = writeCards();
+  if (!cards.length) { toast('No words to write yet.'); return; }
+  session.queue = shuffle(cards);
+  session.total = session.done + session.queue.length;
+  renderStudy();
+}
+
+// Meet 5 new: raises today's new-word number by five and rebuilds the session, so the words get a Meet
 // round of their own (with its stars) and the raise survives a reload. Tomorrow is back to the usual number.
 const MORE_WORDS = 5;
 const wordsLeftToMeet = () => DECK.filter(c => c.kind === 'recall' && isNew(c.id)).length;
@@ -265,13 +276,17 @@ function learnMoreWords() {
   persist();
   startSession();
 }
-// The buttons under a finished day: more review, and more new words while any are left.
+// The buttons under a finished day (Steve, 2026-10-24): Review 10, Write 10 while there are words to write,
+// Meet 5 new while any are left.
 function moreButtonsHTML(readLabel) {
-  const left = wordsLeftToMeet();
-  return `<div class="row"><button class="btn" id="ahead">Review 10</button>${left ? `<button class="btn" id="more-words">Learn ${Math.min(MORE_WORDS, left)} new word${Math.min(MORE_WORDS, left) === 1 ? '' : 's'}</button>` : ''}<a class="btn btn-quiet" href="#read">${readLabel}</a></div>`;
+  const left = Math.min(MORE_WORDS, wordsLeftToMeet());
+  const writes = writeCards().length;
+  return `<div class="row"><button class="btn" id="ahead">Review 10</button>${writes ? `<button class="btn" id="write-more">Write ${writes}</button>` : ''}${left ? `<button class="btn" id="more-words">Meet ${left} new</button>` : ''}<a class="btn btn-quiet" href="#read">${readLabel}</a></div>`;
 }
 function wireMoreButtons() {
   $('#ahead').onclick = () => studyAhead(10);
+  const w = $('#write-more');
+  if (w) w.onclick = writeAhead;
   const m = $('#more-words');
   if (m) m.onclick = learnMoreWords;
 }

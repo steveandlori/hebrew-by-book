@@ -53,12 +53,12 @@ a { color:var(--pen); }
 const BOARD = {
   meta: {
     asOf: '2026-10-24',
-    headline: 'New: words now show up in different verses each time a card comes back; “Learn 5 new words” after a finished day; “Review 10” (was “Study 10 more”) is review only.',
+    headline: 'New: three buttons after a finished day: Review 10, Write 10 (writing only) and Meet 5 new. Words also show up in different verses each time a card comes back.',
     stats: [
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '127' },
+      { label: 'tests passing', value: '128' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -102,7 +102,7 @@ const BOARD = {
         { t: 'Notes for josie-stats (pad bug it shares; Meet stars and the bunching lesson) copied to its docs/handoff/', s: 'done' },
         { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
         { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
-        { t: '“Learn 5 new words” after a finished day (its own Meet round and stars; back to the usual number tomorrow); “Review 10” (was “Study 10 more”) is review only', s: 'done' },
+        { t: 'After a finished day: “Review 10” (review only), “Write 10” (Write the Hebrew cards only, for words already met) and “Meet 5 new” (its own Meet round and stars; back to the usual number tomorrow)', s: 'done' },
         { t: 'Variety: in-verse, Another form, Which word? and Write cards move to another of the word’s verses each review (158 words have more than one)', s: 'done' },
       ] },
     { id: 'm3', title: 'More books', status: 'later',
@@ -118,8 +118,8 @@ const BOARD = {
   tryThis: [
     { id: 't9', date: '2026-10-24', title: 'The same word, a different verse',
       steps: 'Keep studying as usual. When a card for a common word comes back (say אָמַר “to say”, or כִּי), its verse should differ from last time. Words that occur only once in Ruth still show their one verse.' },
-    { id: 't8', date: '2026-10-24', title: 'Learn 5 new words',
-      steps: 'Finish the day’s session. Under it: “Review 10” (review of words already met, ahead of schedule) and “Learn 5 new words”, which starts a fresh Meet round of five words with its own five stars. Press it again for five more; tomorrow is back to your usual number.' },
+    { id: 't8', date: '2026-10-24', title: 'Review 10, Write 10, Meet 5 new',
+      steps: 'Finish the day’s session. Under it: “Review 10” (words already met, ahead of schedule), “Write 10” (only Write the Hebrew cards, for words you have met) and “Meet 5 new”, which starts a fresh Meet round of five words with its own five stars. Tomorrow is back to your usual number.' },
     { id: 't7', date: '2026-10-23', title: 'Read, then listen on Haktuvim',
       steps: 'Read → any chapter → “Listen to chapter N on Haktuvim” (under the chapter numbers). It opens that chapter on haktuvim.co.il with its audio player at the top.' },
     { id: 't6', date: '2026-10-23', title: 'Stars in Meet; Write the Hebrew',

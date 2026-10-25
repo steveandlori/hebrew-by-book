@@ -85,11 +85,16 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 21. **Listening**: each chapter in Read links to Haktuvim (Bible Society in Israel), whose chapter pages have a native
     reader's recording (Steve, 2026-10-23). Link form `https://haktuvim.co.il/study/<OSIS book>.<chapter>`, from Steve.
     Sefaria and STEP Bible stay in the word pop-ups.
-22. **More after the day's work** (Steve, 2026-10-24): two buttons. "Review 10" (named "Study 10 more" until Steve renamed it the same day) is review only: the 10 cards
-    already met that come due soonest (it used to slip in new words when fewer than 10 were waiting). "Learn 5 new
-    words" raises today's new-word number by five (stored as `moreWords`, so it survives a reload; tomorrow is back
-    to the usual number) and gives those words a Meet round of their own, with its own five stars: a finished Meet
-    stays finished (`carryMeet`).
+22. **More after the day's work** (Steve, 2026-10-24): three buttons, Review 10, Write 10 and Meet 5 new.
+    - **Review 10** (first named "Study 10 more") is review only: the 10 cards already met that come due soonest. It
+      used to slip in new words when fewer than 10 were waiting.
+    - **Write 10** ("a review, but with concentrated writing") is Write the Hebrew cards only, for words already met
+      (`writePractice`): started ones soonest due first, then unstarted ones, words read in place `writeAfter` times
+      first. Hidden when Write the Hebrew is Off or nothing is left to write; shows a smaller number when fewer
+      than 10 are available.
+    - **Meet 5 new** (first named "Learn 5 new words") raises today's new-word number by five (stored as
+      `moreWords`, so it survives a reload; tomorrow is back to the usual number) and gives those words a Meet round
+      of their own, with its own five stars: a finished Meet stays finished (`carryMeet`).
 23. **A word in more than one verse** (Steve, 2026-10-24: in-verse and Write cards "seemed very repetitive, same
     verse"). Each card that shows a verse has a pool of places and takes the next at each review (`variantFor`,
     keyed on the card's review count); its id and schedule do not change. First views are as before. In-verse cards
