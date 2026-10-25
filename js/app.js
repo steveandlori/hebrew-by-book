@@ -2,7 +2,7 @@ import BOOK_DATA from '../data/ruth.js';
 import * as store from './store.js';
 import { makeScheduler, hydrate, dehydrate, emptyCard, grade, State, retrievability } from './scheduler.js';
 import { STAGES, STAGE_LABEL, PHASE_LABEL, inPlaceViews, meetStep, meetStars, carryMeet, stagesByItem, countStages, stageDiff, composeSession, allowances, hintLadder, autoRating, revealLine, nudgeFor, buildSnapshot, pruneSnapshots } from './guide.js';
-import { indexBook, buildDeck, formsOf, KIND_LABEL, plain } from './deck.js';
+import { indexBook, buildDeck, formsOf, variantFor, KIND_LABEL, plain } from './deck.js';
 import { createPad } from './pad.js';
 import { makeRenderer, esc, shortParse } from './render.js';
 import { methodHTML } from './method.js';
@@ -294,7 +294,9 @@ function nextCard() {
   session.revealed = false; session.choices = null; session.picked = null;
   session.hints = 0; session.sketch = null;
   dropPad();
-  session.current = session.queue.shift() || null;
+  // Each review shows the card's next verse, so a word is met in more than one place.
+  const card = session.queue.shift() || null;
+  session.current = card && variantFor(card, (cardState(card.id) || {}).reps || 0);
   session.shown++;
   renderStudy();
 }

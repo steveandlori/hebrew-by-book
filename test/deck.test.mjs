@@ -3,7 +3,7 @@ import { makeRenderer } from '../js/render.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ruth from '../data/ruth.js';
-import { indexBook, buildDeck, plain, formsOf, occurrences, distractorsFor } from '../js/deck.js';
+import { indexBook, buildDeck, plain, formsOf, occurrences, distractorsFor, variantFor } from '../js/deck.js';
 
 const book = indexBook(ruth);
 const deck = buildDeck(book);
@@ -32,8 +32,10 @@ test('every vocabulary word has a recall and an in-verse card, and card ids are 
     assert.ok(ids.has(`${l.id}:ctx`), l.id);
   }
 });
-test('every card that points at a token points at an occurrence of its own word', () => {
-  for (const c of deck) {
+// Every place a card can show, at each of its reviews.
+const shown = c => (c.pool && c.pool.length > 1 ? c.pool.map((_, i) => variantFor(c, i)) : [c]);
+test('every card that points at a token points at an occurrence of its own word, in every verse it rotates to', () => {
+  for (const c of deck.flatMap(shown)) {
     for (const tid of [c.token, c.hintToken].filter(Boolean)) {
       const t = book.tokens.get(tid);
       assert.ok(t, `${c.id} -> ${tid}`);
@@ -88,13 +90,35 @@ test('Write the Hebrew: one card per word, never on a written/read place, answer
     const plainOcc = l.occ.filter(id => !book.tokens.get(id).kq);
     assert.equal(ws.length, plainOcc.length ? 1 : 0, l.id);   // words only at written/read places get none
     if (!ws.length) continue;
-    const c = ws[0], t = book.tokens.get(c.token), v = book.verseOf.get(c.token);
-    assert.ok(!t.kq, l.id);
-    const blank = c.blank ? [c.token, ...c.blank] : c.token;
-    const html = R.verseHTML(v, { blank, tappable: true });   // tappable words carry their token id
-    for (const x of v.t) if (x.lex === l.id || x.c === t.c) assert.ok(!html.includes(`data-tok="${x.id}"`), `${l.id} ${v.ref} shows ${x.p}`);
-    if (c.blank) assert.equal((html.match(/class="w blank asked"/g) || []).length, 1, l.id);
+    for (const c of shown(ws[0])) {
+      const t = book.tokens.get(c.token), v = book.verseOf.get(c.token);
+      assert.ok(!t.kq, l.id);
+      const blank = c.blank ? [c.token, ...c.blank] : c.token;
+      const html = R.verseHTML(v, { blank, tappable: true });   // tappable words carry their token id
+      for (const x of v.t) if (x.lex === l.id || x.c === t.c) assert.ok(!html.includes(`data-tok="${x.id}"`), `${l.id} ${v.ref} shows ${x.p}`);
+      if (c.blank) assert.equal((html.match(/class="w blank asked"/g) || []).length, 1, l.id);
+    }
   }
   // the three words found only at written/read places in Ruth
   for (const id of ['H2962', 'H8071', 'H4129']) assert.ok(!deck.some(c => c.id === `${id}:write`), id);
+});
+
+test('cards rotate through a word\'s verses: first view as before, then other places, schedule id unchanged', () => {
+  const say = book.vocab.find(l => l.gloss === 'to say');
+  const ctx = deck.find(c => c.id === `${say.id}:ctx`);
+  assert.equal(variantFor(ctx, 0).token, ctx.token);
+  const refs = new Set(ctx.pool.map((_, i) => book.verseOf.get(variantFor(ctx, i).token).ref));
+  assert.ok(refs.size >= 10, `to say shows in ${refs.size} verses`);
+  assert.equal(variantFor(ctx, 5).id, ctx.id);
+  assert.equal(variantFor(ctx, ctx.pool.length).token, ctx.token);   // wraps round
+  // in-verse cards leave the spellings that have their own Another form card to those cards
+  for (const l of book.vocab) {
+    const forms = new Set(deck.filter(c => c.item.id === l.id && c.kind === 'form').map(c => book.tokens.get(c.token).c));
+    const c = deck.find(x => x.id === `${l.id}:ctx`);
+    for (const v of shown(c)) assert.ok(!forms.has(book.tokens.get(v.token).c), l.id);
+    for (const f of deck.filter(x => x.item.id === l.id && x.kind === 'form'))
+      for (const v of shown(f)) assert.equal(book.tokens.get(v.token).c, book.tokens.get(f.token).c, f.id);
+  }
+  // a Write card with blanks never carries them to a verse that needs none, and vice versa
+  for (const c of deck.filter(x => x.kind === 'write')) for (const v of shown(c)) assert.ok(!v.blank || v.blank.length, c.id);
 });

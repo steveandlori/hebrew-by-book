@@ -123,7 +123,7 @@ const WHY = [
   {
     title: 'Mixing beats blocking',
     evidence: `Practising one kind of problem at a time feels easier, but mixing problem types across a session roughly tripled scores (63% against 20%) on a test a week later for college students learning geometry formulas${cite(18)}, and a classroom study with seventh graders found a large advantage for mixed practice a month later${cite(19)}.`,
-    applied: 'Today’s stack is shuffled, and the Tell apart phase asks which of four look-alike dictionary words a form in a verse belongs to.',
+    applied: 'Today’s stack is shuffled, and the Tell apart phase asks which of four look-alike dictionary words a form in a verse belongs to. A card that shows a verse moves on to another of the word’s verses each time it comes back, so a word is met in more than one setting.',
   },
   {
     title: 'Think, write, say',

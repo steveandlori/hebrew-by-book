@@ -90,6 +90,13 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     words" raises today's new-word number by five (stored as `moreWords`, so it survives a reload; tomorrow is back
     to the usual number) and gives those words a Meet round of their own, with its own five stars: a finished Meet
     stays finished (`carryMeet`).
+23. **A word in more than one verse** (Steve, 2026-10-24: in-verse and Write cards "seemed very repetitive, same
+    verse"). Each card that shows a verse has a pool of places and takes the next at each review (`variantFor`,
+    keyed on the card's review count); its id and schedule do not change. First views are as before. In-verse cards
+    rotate through the spellings no "Another form" card claims, each form card through the verses with its spelling,
+    Which word? through every occurrence, the recall hint verse likewise, and Write through every verse where the
+    word can be blanked without giving it away. 158 of the 287 words occur more than once; the 129 that occur once
+    still have only their one verse.
 
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 

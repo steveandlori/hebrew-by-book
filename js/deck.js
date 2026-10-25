@@ -9,6 +9,11 @@
 //   write   a verse with the word blanked + its English → write the Hebrew on the pad (deepen, once the word
 //           has been read in its verse `writeAfter` times; Settings). Never on a written/read place (asking for
 //           "the word" there would pick one reading), and never with the answer visible elsewhere in the verse.
+//
+// A card that shows a verse has a `pool` of the places it can show, and each review takes the next one
+// (`variantFor`), so a word is seen across its verses rather than in the same one every time (Steve, 2026-10-24).
+// The card's id, and so its schedule, stays the same whichever verse it shows. In-verse cards rotate through the
+// spellings no "Another form" card claims; each form card through the verses with its spelling.
 
 export const KIND_LABEL = { recall: 'Word → meaning', ctx: 'In its verse', form: 'Another form', which: 'Which word?', write: 'Write the Hebrew' };
 const MAX_FORM_CARDS = 2;
@@ -76,20 +81,31 @@ export function distractorsFor(book, lex, n = 3) {
   return cands.map(o => ({ o, s: score(o) })).sort((a, b) => a.s - b.s || a.o.order - b.o.order).slice(0, n).map(x => x.o);
 }
 
-// Where a Write the Hebrew card blanks the word: a verse in which it occurs once, outside any written/read place,
-// and in which no other word has the same spelling (3:18 has כִּי "that" beside the כִּי of כִּי אִם "except").
-// Failing that, every such token in the chosen verse is blanked too (`blank`), with the whole written/read group
-// where one is involved. A word found only at written/read places gets no Write card.
-export function writeTarget(book, lex) {
+// The list rotated to start at index i (the place a card has always shown first stays first).
+const rotate = (list, i) => list.slice(i).concat(list.slice(0, i));
+
+// The places a Write the Hebrew card can blank the word: verses in which it occurs once, outside any written/read
+// place, and in which no other word has the same spelling (3:18 has כִּי "that" beside the כִּי of כִּי אִם "except").
+// Failing that, every plain occurrence, with each such token in its verse blanked too (`blank`), plus the whole
+// written/read group where one is involved. A word found only at written/read places gets no Write card.
+export function writeTargets(book, lex) {
   const plainOcc = (lex.occ || []).map(id => book.tokens.get(id)).filter(t => t && !t.kq);
-  if (!plainOcc.length) return null;
+  if (!plainOcc.length) return [];
   const others = t => book.verseOf.get(t.id).t.filter(x => x.id !== t.id && (x.lex === lex.id || x.c === t.c));
   const lone = plainOcc.filter(t => !others(t).length);
-  if (lone.length) return { token: lone[Math.min(2, lone.length - 1)].id };
-  const t = plainOcc[Math.min(2, plainOcc.length - 1)];
-  const blank = new Set();
-  for (const x of others(t)) { blank.add(x.id); (x.pair || []).forEach(id => blank.add(id)); }
-  return { token: t.id, blank: [...blank] };
+  if (lone.length) return rotate(lone, Math.min(2, lone.length - 1)).map(t => ({ token: t.id }));
+  return rotate(plainOcc, Math.min(2, plainOcc.length - 1)).map(t => {
+    const blank = new Set();
+    for (const x of others(t)) { blank.add(x.id); (x.pair || []).forEach(id => blank.add(id)); }
+    return { token: t.id, blank: [...blank] };
+  });
+}
+export const writeTarget = (book, lex) => writeTargets(book, lex)[0] || null;
+
+// The card as shown at its `reps`-th review: the pool's next place over its own token (or hint verse).
+export function variantFor(card, reps = 0) {
+  if (!card.pool || card.pool.length < 2) return card;
+  return { ...card, blank: undefined, ...card.pool[reps % card.pool.length] };
 }
 
 export function buildDeck(book) {
@@ -99,22 +115,29 @@ export function buildDeck(book) {
     if (!occ.length) continue;
     const base = { item: lex };
     const ctxTok = occ[0];
-    cards.push({ ...base, id: `${lex.id}:recall`, kind: 'recall', hintToken: ctxTok.id });
-    cards.push({ ...base, id: `${lex.id}:ctx`, kind: 'ctx', token: ctxTok.id });
     const seen = new Set([ctxTok.c]);
-    let forms = 0;
+    const formToks = [];
     for (const t of occ.slice(1)) {
-      if (forms >= MAX_FORM_CARDS) break;
+      if (formToks.length >= MAX_FORM_CARDS) break;
       if (seen.has(t.c)) continue;
       seen.add(t.c);
-      cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id });
-      forms++;
+      formToks.push(t);
     }
-    const write = writeTarget(book, lex);
-    if (write) cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', ...write });
-    const whichTok = occ[1] || occ[0];
+    const formSpellings = new Set(formToks.map(t => t.c));
+    const ctxPool = occ.filter(t => !formSpellings.has(t.c)).map(t => ({ token: t.id }));
+    cards.push({ ...base, id: `${lex.id}:recall`, kind: 'recall', hintToken: ctxTok.id, pool: occ.map(t => ({ hintToken: t.id })) });
+    cards.push({ ...base, id: `${lex.id}:ctx`, kind: 'ctx', token: ctxTok.id, pool: ctxPool });
+    for (const t of formToks) {
+      const same = occ.filter(x => x.c === t.c);
+      cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id, pool: rotate(same, same.indexOf(t)).map(x => ({ token: x.id })) });
+    }
+    const writes = writeTargets(book, lex);
+    if (writes.length) cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', ...writes[0], pool: writes });
     const distractors = distractorsFor(book, lex);
-    if (distractors.length === 3) cards.push({ ...base, id: `${lex.id}:which`, kind: 'which', token: whichTok.id, distractors: distractors.map(d => d.id) });
+    if (distractors.length === 3) {
+      const whichPool = rotate(occ, occ.length > 1 ? 1 : 0).map(t => ({ token: t.id }));
+      cards.push({ ...base, id: `${lex.id}:which`, kind: 'which', ...whichPool[0], pool: whichPool, distractors: distractors.map(d => d.id) });
+    }
   }
   return cards;
 }
