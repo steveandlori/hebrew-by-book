@@ -28,6 +28,16 @@ To check one part of the app, open it directly instead of working through a day'
 they never touch real progress. A yellow strip at the top marks a debug page. Note that the Playwright browser
 keeps storage between runs: a plain URL on a port used before may carry an earlier run's progress.
 
+## Testing across days and gaps
+
+No library needed (Steve suggested fake time, 2026-10-25):
+- **Unit tests:** the pure modules take time as an argument (`grade(…, at)`, `isDue`, `getCard`). For anything
+  that reads the clock, Node's own `mock.timers.enable({ apis: ['Date'], now })` and `mock.timers.tick(ms)` from
+  `node:test` mock `Date`. Checked on Node 24.
+- **Browser:** Playwright's `page.clock` does the same. Call `page.clock.install({ time })` before the page loads,
+  then `page.clock.fastForward('168:00:00')` or `page.clock.setSystemTime(…)` and reload, to see the app after a week
+  away.
+
 ## Test servers
 
 Stop only the server you started, by its PID or its task. Never kill every `python.exe` (a josie-stats QA agent did,
