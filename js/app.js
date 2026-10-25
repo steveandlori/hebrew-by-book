@@ -945,4 +945,10 @@ function navigate() {
 applyHebSize();
 window.addEventListener('hashchange', navigate);
 document.addEventListener('keydown', onKey);
+// The first visit leaves #method in the address, and a bookmark, home-screen icon or restored tab keeps it, so
+// every later load opened How it works (Steve, 2026-10-24). Once it has been seen, a fresh load opens Today;
+// the How tab still opens it on demand.
+if (state.settings.introSeen && location.hash === '#method') {
+  try { history.replaceState(null, '', '#today'); } catch (e) { /* ignore */ }
+}
 navigate();

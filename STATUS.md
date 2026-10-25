@@ -113,6 +113,10 @@ Settled (Steve, 2026-10-24): 10 new words a day "feels right" for Ruth, with Lea
 
 ## Things found along the way
 
+- **How it works on every fresh load** (Steve, 2026-10-24): the first visit leaves `#method` in the address, and a
+  bookmark, home-screen icon or restored tab kept it, so each load opened How it works. Once it has been seen, a load
+  at `#method` now opens Today (the How tab still opens it). Same pattern in josie-stats; noted in its handoff folder.
+
 - lomed's OSHB parser (an earlier project) dropped every qere and mis-decoded participles and some stems; the parser here
   was written fresh from OSHB's code tables, and the tests pin the cases lomed got wrong. Notes: `reference/lomed/README.md`.
 - TBESH has several "head" rows for 644 numbers; picking the first one turned חַיִל ("strength") into the place name

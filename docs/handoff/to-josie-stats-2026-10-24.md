@@ -23,3 +23,19 @@ The recount still applies when an *unfinished* round grows. Test: "carryMeet: a 
 `test/guide.hints.test.mjs`.
 
 I have not run josie-stats; please confirm before adopting either change.
+
+## 3. How it works opens on every fresh load, not just the first (found later the same day)
+
+Steve: the app "defaults to How each time I load it fresh". The first visit rewrites the address to `#method`
+(your app.js:730 does the same). A bookmark, home-screen icon or restored tab keeps that address, and `navigate()`
+honours it, so every later load opens How it works even though `introSeen` is true. The fix, just before the startup
+`navigate()` (your app.js:746):
+
+```js
+if (state.settings.introSeen && location.hash === '#method') {
+  try { history.replaceState(null, '', '#today'); } catch (e) { /* ignore */ }
+}
+```
+
+Checked in Playwright: the first visit shows How it works; a reload, or opening a `#method` bookmark, opens Today;
+the How tab still opens it. One trade-off: reloading while reading How it works lands on Today.
