@@ -47,3 +47,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-23 | Fixed C2-12 (clamp pad points), C2-13 (asked blank marked), C2-14 (comment: growth recount), F5 (same spelling counts as giving the answer away) | coordinator | js 74; two-blank card checked in browser; josie note addendum |
 | 2026-10-24 | Learn 5 new words button (Steve); Study 10 more is review only; a finished Meet round stays finished, extra words get their own | coordinator | js 75 |
 | 2026-10-24 | Cards rotate through a word's verses at each review (Steve: "same verse"); test covers every rotated place for Write's no-giveaway rule | coordinator | js 76 |
+| 2026-10-24 | Browser check (Playwright reconnected): Learn 5 new words gives a fresh Meet round, stars 0→5 evenly over 30 cards; Study 10 more adds no new cards; verses rotate (אִישׁ 1:1→1:3→1:9). Pools now one place per verse (וַיְהִי 1:1 came twice running) | coordinator | js 77 |

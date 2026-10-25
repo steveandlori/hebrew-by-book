@@ -122,3 +122,11 @@ test('cards rotate through a word\'s verses: first view as before, then other pl
   // a Write card with blanks never carries them to a verse that needs none, and vice versa
   for (const c of deck.filter(x => x.kind === 'write')) for (const v of shown(c)) assert.ok(!v.blank || v.blank.length, c.id);
 });
+
+test('a card never comes round to the same verse twice running: one place per verse in every pool', () => {
+  for (const c of deck.filter(x => x.pool)) {
+    const refs = c.pool.map(p => book.tokens.get(p.token || p.hintToken).ref);
+    assert.equal(new Set(refs).size, refs.length, c.id);
+    assert.equal(c.pool[0].token || c.pool[0].hintToken, c.token || c.hintToken, c.id);   // first view as before
+  }
+});

@@ -83,6 +83,8 @@ export function distractorsFor(book, lex, n = 3) {
 
 // The list rotated to start at index i (the place a card has always shown first stays first).
 const rotate = (list, i) => list.slice(i).concat(list.slice(0, i));
+// One token per verse, the first: a verse with the word twice (וַיְהִי in 1:1) would otherwise come round twice running.
+const perVerse = toks => { const seen = new Set(); return toks.filter(t => !seen.has(t.ref) && seen.add(t.ref)); };
 
 // The places a Write the Hebrew card can blank the word: verses in which it occurs once, outside any written/read
 // place, and in which no other word has the same spelling (3:18 has כִּי "that" beside the כִּי of כִּי אִם "except").
@@ -94,7 +96,7 @@ export function writeTargets(book, lex) {
   const others = t => book.verseOf.get(t.id).t.filter(x => x.id !== t.id && (x.lex === lex.id || x.c === t.c));
   const lone = plainOcc.filter(t => !others(t).length);
   if (lone.length) return rotate(lone, Math.min(2, lone.length - 1)).map(t => ({ token: t.id }));
-  return rotate(plainOcc, Math.min(2, plainOcc.length - 1)).map(t => {
+  return perVerse(rotate(plainOcc, Math.min(2, plainOcc.length - 1))).map(t => {
     const blank = new Set();
     for (const x of others(t)) { blank.add(x.id); (x.pair || []).forEach(id => blank.add(id)); }
     return { token: t.id, blank: [...blank] };
@@ -124,18 +126,18 @@ export function buildDeck(book) {
       formToks.push(t);
     }
     const formSpellings = new Set(formToks.map(t => t.c));
-    const ctxPool = occ.filter(t => !formSpellings.has(t.c)).map(t => ({ token: t.id }));
-    cards.push({ ...base, id: `${lex.id}:recall`, kind: 'recall', hintToken: ctxTok.id, pool: occ.map(t => ({ hintToken: t.id })) });
+    const ctxPool = perVerse(occ.filter(t => !formSpellings.has(t.c))).map(t => ({ token: t.id }));
+    cards.push({ ...base, id: `${lex.id}:recall`, kind: 'recall', hintToken: ctxTok.id, pool: perVerse(occ).map(t => ({ hintToken: t.id })) });
     cards.push({ ...base, id: `${lex.id}:ctx`, kind: 'ctx', token: ctxTok.id, pool: ctxPool });
     for (const t of formToks) {
       const same = occ.filter(x => x.c === t.c);
-      cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id, pool: rotate(same, same.indexOf(t)).map(x => ({ token: x.id })) });
+      cards.push({ ...base, id: `${lex.id}:form:${t.id}`, kind: 'form', token: t.id, pool: perVerse(rotate(same, same.indexOf(t))).map(x => ({ token: x.id })) });
     }
     const writes = writeTargets(book, lex);
     if (writes.length) cards.push({ ...base, id: `${lex.id}:write`, kind: 'write', ...writes[0], pool: writes });
     const distractors = distractorsFor(book, lex);
     if (distractors.length === 3) {
-      const whichPool = rotate(occ, occ.length > 1 ? 1 : 0).map(t => ({ token: t.id }));
+      const whichPool = perVerse(rotate(occ, occ.length > 1 ? 1 : 0)).map(t => ({ token: t.id }));
       cards.push({ ...base, id: `${lex.id}:which`, kind: 'which', ...whichPool[0], pool: whichPool, distractors: distractors.map(d => d.id) });
     }
   }
