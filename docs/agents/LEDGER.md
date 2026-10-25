@@ -49,3 +49,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-24 | Cards rotate through a word's verses at each review (Steve: "same verse"); test covers every rotated place for Write's no-giveaway rule | coordinator | js 76 |
 | 2026-10-24 | Browser check (Playwright reconnected): Learn 5 new words gives a fresh Meet round, stars 0→5 evenly over 30 cards; Study 10 more adds no new cards; verses rotate (אִישׁ 1:1→1:3→1:9). Pools now one place per verse (וַיְהִי 1:1 came twice running) | coordinator | js 77 |
 | 2026-10-24 | Write 10 button (Steve): Write the Hebrew cards only, for met words; Learn 5 new words renamed Meet 5 new. Browser at 390 px: buttons wrap, no sideways scroll; Write 10 served 10 write cards | coordinator | js 78 |
+| 2026-10-24 | Read link dropped from the finished-day buttons (Steve: the Read tab is always there); 390 px check: three buttons, no sideways scroll | coordinator | js 78 |

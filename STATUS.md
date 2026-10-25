@@ -85,7 +85,8 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
 21. **Listening**: each chapter in Read links to Haktuvim (Bible Society in Israel), whose chapter pages have a native
     reader's recording (Steve, 2026-10-23). Link form `https://haktuvim.co.il/study/<OSIS book>.<chapter>`, from Steve.
     Sefaria and STEP Bible stay in the word pop-ups.
-22. **More after the day's work** (Steve, 2026-10-24): three buttons, Review 10, Write 10 and Meet 5 new.
+22. **More after the day's work** (Steve, 2026-10-24): three buttons, Review 10, Write 10 and Meet 5 new (no Read link;
+    the Read tab is always there).
     - **Review 10** (first named "Study 10 more") is review only: the 10 cards already met that come due soonest. It
       used to slip in new words when fewer than 10 were waiting.
     - **Write 10** ("a review, but with concentrated writing") is Write the Hebrew cards only, for words already met
