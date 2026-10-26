@@ -27,8 +27,24 @@ function normalizeSettings(raw) {
   return s;
 }
 
+// The study day runs from 4 am to 4 am, as in Anki, so a late-night session counts as the same day
+// (2026-10-25; the hour is Steve's to change). Every day key and "due today" goes through these.
+const DAY_ROLLOVER_HOUR = 4;
+const HOUR = 3600000;
+
 function todayKey(d = new Date()) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const s = new Date(d.getTime() - DAY_ROLLOVER_HOUR * HOUR);
+  return `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`;
+}
+
+// The start of the study day `d` falls in (the last rollover at or before it), and its end (the next one).
+function dayStartAt(d = new Date()) {
+  const s = new Date(d.getTime() - DAY_ROLLOVER_HOUR * HOUR);
+  return new Date(s.getFullYear(), s.getMonth(), s.getDate(), DAY_ROLLOVER_HOUR);
+}
+function dayEnd(d = new Date()) {
+  const s = dayStartAt(d);
+  return new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1, DAY_ROLLOVER_HOUR);
 }
 
 function shape(s) {
@@ -43,6 +59,7 @@ function shape(s) {
     dayStart: s.dayStart || null,  // {day, stages: [[wordId, stage]]} at the day's first session, for the wrap-up
     moreWords: s.moreWords || null, // {day, n}: new words asked for today beyond the daily number (Meet 5 new)
     laterRecall: s.laterRecall || {}, // wordId -> the first day it was recalled on a day after it was met (Graduated)
+    dayPlan: s.dayPlan || null,    // {day, catchUp, overdue, caughtUp, softStop, stopped}: today's checkpoints (breaks)
   };
 }
 
@@ -81,4 +98,4 @@ export function resetState() {
   return loadState();
 }
 
-export { todayKey, DEFAULT_SETTINGS };
+export { todayKey, dayStartAt, dayEnd, DAY_ROLLOVER_HOUR, DEFAULT_SETTINGS };

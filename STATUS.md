@@ -120,6 +120,19 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     and look-alikes still start once a word's Meet is done. The day-start baseline is versioned (`v: 2`) so a
     wrap-up never compares the two readings. The card-level stats were renamed "cards in review" / "cards in short
     steps" so they do not clash with the word stages. The Progress history from before this mixes the two readings.
+27. **Breaks and backlogs** (Steve, 2026-10-25: "the app shouldn't assume that I'm at the same place when I return").
+    Research: docs/research/breaks.md. Plan: docs/plans/breaks-plan.md, reviewed by Fable (docs/review/plan-breaks.md)
+    and amended. The memory model (FSRS) already handled late reviews. What changed is around it:
+    - **The study day runs from 4 am to 4 am** (Steve's to veto), and a card is due for the whole day it falls due
+      on. Before, due-by-the-minute made reviews run about 1.5× late; in the model this halves forgotten words.
+    - **Catch-up:** a day starting with 15+ reviews overdue does them first, then a checkpoint offers the day's new
+      words or a stop (15 is a judgement; the research tested "any").
+    - **A large pile (over 60) comes most at risk first,** with an offer to stop after 60 (judgement; the order does
+      not change what is kept in the model).
+    - **"May have faded":** predicted recall under 0.80 (judgement), shown in Words, Read and Stats; never a stage.
+    - **A stop is kept for the day** (`state.dayPlan`), and an open tab rolls over at the next card.
+    - Left alone: interrupted steps continue; relearning is one step; no penalty for absence beyond FSRS's.
+    - Known: ts-fsrs counts days in UTC, so a learning step crossing 8 pm EDT counts as next-day (minor).
 
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 

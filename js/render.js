@@ -25,8 +25,8 @@ export function shortParse(label) {
     .replace(/,/g, '').replace(/\s+/g, ' ').trim();
 }
 
-// deps: { lexemes: Map, isPointed: () => bool, stageOf: lexId => stage }
-export function makeRenderer({ lexemes, isPointed, stageOf }) {
+// deps: { lexemes: Map, isPointed: () => bool, stageOf: lexId => stage, fadingOf?: lexId => bool }
+export function makeRenderer({ lexemes, isPointed, stageOf, fadingOf = () => false }) {
   const tokText = t => isPointed() ? t.p : t.c;
   const lemmaText = l => isPointed() ? l.he : (l.cons || plain(l.he));
   const heb = (text, cls = '') => `<span class="heb${cls ? ' ' + cls : ''}" lang="he" dir="rtl">${esc(text)}</span>`;
@@ -42,7 +42,7 @@ export function makeRenderer({ lexemes, isPointed, stageOf }) {
     }
     const cls = ['w'];
     if (o.highlight === t.id) cls.push('hl');
-    if (o.stages) cls.push('st-' + stageOf(t.lex));
+    if (o.stages) { cls.push('st-' + stageOf(t.lex)); if (fadingOf(t.lex)) cls.push('st-fading'); }
     if (extra) cls.push(extra);
     const gl = o.glosses ? `<small class="gl" dir="ltr" lang="en">${esc(glossLine(t))}</small>` : '';
     const inner = `<span class="wt">${esc(tokText(t))}${t.j && !o.noJoin ? MAQQEF : ''}</span>${gl}`;

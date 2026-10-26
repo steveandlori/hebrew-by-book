@@ -55,3 +55,5 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-25 | Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Steve chose option 1). Browser: crafted two-day history shows 277/8/2/0 with the yellow segment | coordinator | js 80 |
 | 2026-10-25 | Review 3 (Fable, adversarial; first run stalled on a dropped connection, rerun): 7 findings, all VERIFIED; all fixed and browser-checked | general-purpose (fable) + coordinator | js 81; code-3.md |
 | 2026-10-25 | Research on breaks/backlogs/fading started (Steve: go ahead with research and improvements); brief-research-breaks.md | general-purpose | running |
+| 2026-10-26 | Plan review (Fable; first run lost to a dropped connection, rerun): 15 findings, proceed with amendments, simpler checkpoint design taken | general-purpose (fable) | plan-breaks.md |
+| 2026-10-26 | Built breaks: 4 am study day + due by day, catch-up checkpoint, risk-ordered pile + soft stop, fading mark, day kept in dayPlan, ?debug=away. Browser with page.clock: week away, checkpoint, stop kept across reload, Meet 5 new override, overnight tab | coordinator | js 87 |

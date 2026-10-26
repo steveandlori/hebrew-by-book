@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-25',
-    headline: 'New: Learning now means met but not yet recalled on a later day, so all four stages show; Practice? pad on Write cards; Review 10 / Write 10 / Meet 5 new.',
+    asOf: '2026-10-26',
+    headline: 'New: the app now copes with breaks. Cards are due for their whole day (4 am to 4 am), a day after missed days starts with catch-up reviews and a checkpoint, big piles come most-at-risk first, and words that may have faded are marked.',
     stats: [
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '131' },
+      { label: 'tests passing', value: '137' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -103,7 +103,7 @@ const BOARD = {
         { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
         { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
         { t: 'After a finished day: “Review 10” (review only), “Write 10” (Write the Hebrew cards only, for words already met) and “Meet 5 new” (its own Meet round and stars; back to the usual number tomorrow)', s: 'done' },
-        { t: 'Breaks and backlogs: research (FSRS on overdue cards, backlog order, pausing new words, fading) then improvements; Steve asked 2026-10-25', s: 'doing' },
+        { t: 'Breaks and backlogs: researched, planned, Fable-reviewed, built (due by day, catch-up checkpoint, most-at-risk order with a stop, “may have faded”)', s: 'done' },
         { t: 'Review 3 (Fable): 7 findings fixed; a word keeps one verse through its first session, then rotates', s: 'done' },
         { t: 'Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Learning was always 0)', s: 'done' },
         { t: '“Practice?” under a revealed Write the Hebrew card: a second pad to copy either form, ungraded', s: 'done' },
@@ -121,6 +121,8 @@ const BOARD = {
       advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
+    { id: 't12', date: '2026-10-26', title: 'Coming back after a break',
+      steps: 'Without waiting a week: add ?debug=away&days=7 to the site address (scratch progress; yours is untouched). Today opens with “Catching up”, the most-at-risk words first, an offer to stop after 60, and then “Caught up … Meet N new / Stop for today”. In Words and Stats, “may have faded” marks words the model thinks have slipped.' },
     { id: 't11', date: '2026-10-25', title: 'Where your words are',
       steps: 'Stats → Where your words are. Words met in the last day or two now show as Learning (yellow) until you recall them on a later day, when they become Graduated. Solid is unchanged.' },
     { id: 't10', date: '2026-10-24', title: 'Practice? on a Write card',
@@ -145,6 +147,8 @@ const BOARD = {
       steps: 'Read → "Written and read: 13 places". Each place hides both parses until you open it. Tell me if any wording takes a side.' },
   ],
   docs: [
+    { title: 'Research: breaks and backlogs', href: 'docs/research/breaks.md', blurb: 'What happens when you miss days: FSRS read from its code, the evidence on backlogs and relearning, and a simulation of a week and a month away.', date: '2026-10-25' },
+    { title: 'Plan: breaks (with its Fable review)', href: 'docs/plans/breaks-plan.md', blurb: 'The plan, the review’s 15 findings (docs/review/plan-breaks.md), and what was built.', date: '2026-10-26' },
     { title: 'Review 3: code', href: 'docs/review/code-3.md', blurb: 'Adversarial (Fable) review of the 2026-10-24 evening features: 7 findings, all reproduced, all fixed (rotation now starts after the first session; Meet 5 new gives exactly 5).', date: '2026-10-25' },
     { title: 'Review 2: code', href: 'docs/review/code-2.md', blurb: 'Adversarial review of the 2026-10-23 changes: 11 findings, then a confirmation pass (all fixed or accepted; 3 minor follow-ups fixed).', date: '2026-10-23' },
     { title: 'Review 2: QA', href: 'docs/review/qa-2.md', blurb: 'Written test plan run in a real browser at phone and desktop width: FIX FIRST, then SHIP on the confirmation pass.', date: '2026-10-23' },

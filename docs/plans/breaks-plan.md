@@ -136,3 +136,34 @@ too), and the board.
   should not get the soft stop?).
 - The fading mark costs a `retrievability` call per word on each render of Read and Words (287 words, cheap; cache per
   render).
+
+## As built, after the Fable plan review (docs/review/plan-breaks.md: proceed with amendments)
+
+The review found two blockers: "Stop for today" did not stick (P-1), and catch-up blocked "Meet 5 new" (P-2). It
+proposed a simpler design (P-6), which was taken:
+- **Catch-up is a checkpoint, not a zeroed allowance.** On a day that starts with 15 or more reviews overdue, the
+  reviews come first, with due Which word? cards among them (`reviewsFirst`). Write-card unlocks wait until after the
+  checkpoint. Then: "Caught up … Meet N new / Stop for today".
+- **One persisted record for the day**, `state.dayPlan = { day, catchUp, overdue, caughtUp, softStop, stopped }`. A
+  stop survives a tab change and a reload. After a stop:
+  - the day's own number is 0, but Meet 5 new still adds five words, and they survive a reload (P-2);
+  - declined reviews are not rebuilt (P-1, P-12).
+- **`resumeOrStart` no longer refills** a finished session. With due counted by the day, nothing new comes due
+  after the session is built (P-1).
+- **Review 10** takes reviews still due today first, most at risk first (P-3).
+- **One `ordered` flag** from the composer. The soft stop counts distinct reviews and is never offered in Review 10
+  or Write 10 (P-7).
+- **Fading** marks every word whose recall card is past its first session, not only Graduated/Solid (P-8). Its
+  wording is a prediction ("may have faded … your next review decides") (P-14).
+- **The day change is checked in `nextCard`**, so a card on screen is never lost. `visibilitychange` acts only on a
+  finished screen (P-5).
+- **`?debug=away&days=N&words=N`** seeds the words with the clock shifted back (P-4), 40 words by default, so the
+  pile is large enough to be ordered.
+- **"due now" is now "due today"** (P-9). Old midnight day keys stay as they are (P-11, accepted).
+
+Browser check (Playwright, `page.clock`, 390 px):
+- a day of 10 words, then 8 days away: "Catching up: 30 reviews were waiting from earlier days", 30 reviews, then the
+  checkpoint;
+- after a reload the checkpoint is shown again; Stop: "Stopped for today", kept across a tab change and a reload;
+- Meet 5 new gives 5 words with no checkpoint, and keeps them after a reload;
+- a card left on screen to 4:30 am: the next grade builds the new day's session.

@@ -117,7 +117,11 @@ function interleave(...lists) {
 // apart (Which word? cards for words whose Meet is done). Stages here are the old reading (no `recalledLater`).
 // `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today;
 // `writeAfter` = in-place views that unlock a word's Write the Hebrew card (0: no write cards at all).
-export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random }) {
+// `riskOf(cardId)` = predicted recall now: when given and more than BACKLOG_ORDER_MIN reviews are due, they come
+// most-likely-forgotten first, shuffled within blocks of BACKLOG_BLOCK so a word's cards are not back to back
+// (`ordered` in the result). `reviewsFirst` (a catch-up day) puts due Which word? cards with the other reviews,
+// before the day's new material, so the catch-up checkpoint comes after every review.
+export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random, riskOf = null, reviewsFirst = false }) {
   if (!writeAfter) deck = deck.filter(c => c.kind !== 'write');
   const stages = stagesByItem(deck, getCard);
   const isNew = id => !getCard(id);
@@ -128,8 +132,17 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   const inSteps = c => { const s = getCard(c.id); return s && (s.state === State.Learning || s.state === State.Relearning); };
   const recallSoon = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && !isDue(c.id) && inSteps(c))
     .sort((a, b) => new Date(getCard(a.id).due) - new Date(getCard(b.id).due));
-  const recall = [...recallDue, ...recallSoon];
-  const dueTell = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
+  const dueWhich = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
+  const reviews = reviewsFirst ? [...recallDue, ...dueWhich] : recallDue;
+  const dueTell = reviewsFirst ? [] : dueWhich;
+  const ordered = !!riskOf && reviews.length > BACKLOG_ORDER_MIN;
+  let reviewOrder;
+  if (ordered) {
+    const byRisk = reviews.slice().sort((a, b) => riskOf(a.id) - riskOf(b.id));
+    reviewOrder = [];
+    for (let i = 0; i < byRisk.length; i += BACKLOG_BLOCK) reviewOrder.push(...shuffleWith(byRisk.slice(i, i + BACKLOG_BLOCK), rng));
+  } else reviewOrder = shuffleWith(reviews, rng);
+  const recall = [...reviews, ...recallSoon];
   const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
   const byItem = new Map();
   for (const c of deck) { if (!byItem.has(c.item.id)) byItem.set(c.item.id, []); byItem.get(c.item.id).push(c); }
@@ -159,12 +172,53 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
   const meetRecall = meet.filter(c => c.kind === 'recall');
   const meetCtx = meet.filter(c => c.kind !== 'recall');
   const queue = [
-    ...shuffleWith(recallDue, rng), ...recallSoon,
+    ...reviewOrder, ...recallSoon,
     ...shuffleWith(meetRecall, rng),
     ...shuffleWith(meetCtx, rng),
     ...shuffleWith([...deepen, ...tell], rng),
   ];
-  return { queue, phaseOf, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
+  return { queue, phaseOf, ordered, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
+}
+
+/* ───────────────────────── breaks and backlogs ───────────────────────── */
+// From docs/research/breaks.md and its plan review (docs/review/plan-breaks.md), 2026-10-25.
+
+// A large pile of due reviews is taken most-at-risk first (Anki's advice for a backlog); below this it is shuffled.
+export const BACKLOG_ORDER_MIN = 60;
+export const BACKLOG_BLOCK = 20;
+// The day starts as a catch-up day when at least this many reviews are overdue from earlier days (a missed day at
+// 10 words a day leaves about 40; an interrupted session leaves mostly unseen new cards, which are never overdue).
+export const CATCH_UP_MIN = 15;
+// After this many distinct reviews in an ordered session, the app offers to stop for the day.
+export const SOFT_STOP = 60;
+// A word is shown as possibly faded when its recall card's predicted recall is below this: about three times its
+// planned gap. A prediction only; the next review decides. No research-validated threshold exists (judgement).
+export const FADING_R = 0.80;
+
+// Reviews (cards already met, in review or relearning) overdue from before `dayStart`, and due by `dayEnd`.
+export function backlog({ deck, getCard, dayStart, dayEnd }) {
+  let overdue = 0, due = 0;
+  for (const c of deck) {
+    const s = getCard(c.id);
+    if (!s || s.state === State.New || s.state === State.Learning) continue;
+    const d = new Date(s.due);
+    if (d < dayEnd) due++;
+    if (d < dayStart) overdue++;
+  }
+  return { overdue, due };
+}
+
+// Words whose recall card is past its first session and whose predicted recall (`rOf(fsrsCard)`) is below FADING_R.
+export function fadingWords(deck, getCard, rOf, threshold = FADING_R) {
+  const out = new Set();
+  for (const c of deck) {
+    if (c.kind !== 'recall') continue;
+    const s = getCard(c.id);
+    if (!s || s.state !== State.Review) continue;
+    const r = rOf(s);
+    if (r !== null && r !== undefined && r < threshold) out.add(c.item.id);
+  }
+  return out;
 }
 
 // What is left of today's allowances, given the card ids introduced today: new words (counted by their recall
