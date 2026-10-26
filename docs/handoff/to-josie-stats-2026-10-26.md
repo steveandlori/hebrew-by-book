@@ -42,3 +42,13 @@ under 0.80) sits beside the stage and is never a stage.
 Testing tip: Playwright's `page.clock.install({ time })` before load, then `page.clock.fastForward(ms)` and a reload,
 walks through a week away in a few minutes. Pass milliseconds: '192:00:00' is rejected. `node:test` `mock.timers`
 mocks `Date` for unit tests.
+
+## Addendum: from our code review of the above (docs/review/code-4.md)
+
+- **Roll the day over by local clock components,** not "four hours earlier":
+  `new Date(y, m, d - (hours < 4 ? 1 : 0))`. Subtracting elapsed hours moves the rollover to 3 am or 5 am on
+  daylight-saving nights.
+- **Any button on a screen that can be left open overnight** (a wrap-up, a checkpoint) should start the new day
+  first. Ours did not, and a Stop on yesterday's checkpoint stopped yesterday's session.
+- **If a checkpoint's kind doubles as the flag it sets, name them the same.** Ours returned 'soft' but tested
+  'softStop', so Keep going came back on every card.

@@ -20,6 +20,16 @@ test('the study day runs from 4 am to 4 am', () => {
   assert.equal(+dayEnd(at(30, 12)), +new Date(2026, 11, 1, 4));
 });
 
+test('the rollover stays at 4 am on daylight-saving nights (review C4-2)', () => {
+  // fall back (Nov 1 2026 in New York): 3:30 am is still the day before; the day starts at 4 am
+  assert.equal(todayKey(new Date(2026, 10, 1, 3, 30)), '2026-10-31');
+  assert.equal(todayKey(new Date(2026, 10, 1, 4, 0)), '2026-11-01');
+  assert.ok(dayStartAt(new Date(2026, 10, 1, 3, 30)) <= new Date(2026, 10, 1, 3, 30));
+  // spring forward (Mar 14 2027): 4:30 am is the new day, and the day ends at 4 am the next morning
+  assert.equal(todayKey(new Date(2027, 2, 14, 4, 30)), '2027-03-14');
+  assert.equal(+dayEnd(new Date(2027, 2, 14, 4, 30)), +new Date(2027, 2, 15, 4));
+});
+
 test('the clock can be faked for the whole module (node:test mock timers)', () => {
   mock.timers.enable({ apis: ['Date'], now: at(9, 23) });
   try {

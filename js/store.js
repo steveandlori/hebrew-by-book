@@ -30,16 +30,21 @@ function normalizeSettings(raw) {
 // The study day runs from 4 am to 4 am, as in Anki, so a late-night session counts as the same day
 // (2026-10-25; the hour is Steve's to change). Every day key and "due today" goes through these.
 const DAY_ROLLOVER_HOUR = 4;
-const HOUR = 3600000;
+
+// The calendar date of the study day `d` falls in, from local clock components rather than "four hours
+// earlier", so the rollover stays at 4 am on daylight-saving nights (review C4-2).
+function studyDate(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getHours() < DAY_ROLLOVER_HOUR ? 1 : 0));
+}
 
 function todayKey(d = new Date()) {
-  const s = new Date(d.getTime() - DAY_ROLLOVER_HOUR * HOUR);
+  const s = studyDate(d);
   return `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`;
 }
 
 // The start of the study day `d` falls in (the last rollover at or before it), and its end (the next one).
 function dayStartAt(d = new Date()) {
-  const s = new Date(d.getTime() - DAY_ROLLOVER_HOUR * HOUR);
+  const s = studyDate(d);
   return new Date(s.getFullYear(), s.getMonth(), s.getDate(), DAY_ROLLOVER_HOUR);
 }
 function dayEnd(d = new Date()) {

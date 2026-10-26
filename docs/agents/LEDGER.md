@@ -57,3 +57,4 @@ Declined on purpose: 08G2d partitive (QUESTIONABLE), 08rWk עַד אִם, 08BYa 
 | 2026-10-25 | Research on breaks/backlogs/fading started (Steve: go ahead with research and improvements); brief-research-breaks.md | general-purpose | running |
 | 2026-10-26 | Plan review (Fable; first run lost to a dropped connection, rerun): 15 findings, proceed with amendments, simpler checkpoint design taken | general-purpose (fable) | plan-breaks.md |
 | 2026-10-26 | Built breaks: 4 am study day + due by day, catch-up checkpoint, risk-ordered pile + soft stop, fading mark, day kept in dayPlan, ?debug=away. Browser with page.clock: week away, checkpoint, stop kept across reload, Meet 5 new override, overnight tab | coordinator | js 87 |
+| 2026-10-26 | Review 4 (Fable, code): 8 findings (1 blocker: Keep going re-offered the stop forever); all fixed; browser-checked with page.clock | general-purpose (fable) + coordinator | js 88; code-4.md |

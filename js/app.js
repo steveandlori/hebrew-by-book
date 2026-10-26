@@ -280,7 +280,7 @@ function startSession({ keepDone = false, newWords = Infinity } = {}) {
   session.day = store.todayKey();
   if (!keepDone) session.done = 0;
   session.revealed = false; session.current = null; session.checkpoint = null;
-  session.meetStars = 0; session.meetSteps = new Map(); session.whichStreak = 0; session.reviewed = new Set();
+  session.meetStars = 0; session.meetSteps = new Map(); session.whichStreak = 0;
   const plan = todayPlan();
   // After a stop, the declined reviews wait for tomorrow (cards part-way through their steps still finish).
   const r = composeSession({
@@ -289,6 +289,8 @@ function startSession({ keepDone = false, newWords = Infinity } = {}) {
     riskOf: recallNow, reviewsFirst: plan.catchUp && !plan.caughtUp,
   });
   session.queue = r.queue; session.phaseOf = r.phaseOf; session.ordered = r.ordered;
+  // An ordered pile stays ordered for the day, so a reload part-way still offers the stop (review C4-5).
+  if (r.ordered && !plan.ordered) { plan.ordered = true; persist(); }
   // Stars earned earlier today survive a reload (josie-stats found they reset).
   const meet = carryMeet(state.meetDay, session.day, r.phaseOf);
   state.meetDay = meet;
@@ -314,7 +316,15 @@ const writeOn = c => c.kind !== 'write' || state.settings.writeAfter > 0;
 // Review 10: cards already met, soonest due first, ahead of schedule. New words are never slipped in
 // here; they are their own choice (Meet 5 new), so the day's number stays what Steve set.
 // After a stop, the reviews still due today come first, most at risk first (plan review P-3).
+// A button on a screen left open past 4 am (a wrap-up or a checkpoint) starts the new day instead of acting on
+// yesterday's session (review C4-3). Returns true when it did.
+function staleDay() {
+  if (session.day && session.day !== store.todayKey()) { startSession(); return true; }
+  return false;
+}
+
 function studyAhead(n = 10) {
+  if (staleDay()) return;
   const at = now();
   const met = DECK.filter(c => writeOn(c) && !isNew(c.id));
   const dueToday = met.filter(c => isDue(c.id, at)).sort((a, b) => recallNow(a.id) - recallNow(b.id));
@@ -331,6 +341,7 @@ function studyAhead(n = 10) {
 const WRITE_MORE = 10;
 const writeCards = () => writePractice({ deck: DECK, getCard: cardState, n: WRITE_MORE, writeAfter: state.settings.writeAfter });
 function writeAhead() {
+  if (staleDay()) return;
   const cards = writeCards();
   if (!cards.length) { toast('No words to write yet.'); return; }
   session.mode = 'ahead'; session.checkpoint = null;
@@ -344,6 +355,7 @@ function writeAhead() {
 const MORE_WORDS = 5;
 const wordsLeftToMeet = () => DECK.filter(c => c.kind === 'recall' && isNew(c.id)).length;
 function learnMoreWords() {
+  if (staleDay()) return;
   // Exactly five more than met so far today, whatever new words per day says now (review C3-3).
   const met = (state.newIntroduced[store.todayKey()] || []).filter(id => id.endsWith(':recall')).length;
   state.moreWords = { day: store.todayKey(), n: Math.max(moreWordsToday(), met + MORE_WORDS - dailyNumber()) };
@@ -375,7 +387,7 @@ function resetSession() {
 // Reviews still due today that a stop left for tomorrow.
 function reviewsWaiting() {
   if (!todayPlan().stopped) return 0;
-  return DECK.filter(c => writeOn(c) && !isNew(c.id) && isDue(c.id)).length;
+  return DECK.filter(c => writeOn(c) && !isNew(c.id) && isDue(c.id) && cardState(c.id).state === State.Review).length;
 }
 
 // Which checkpoint, if any, comes before the next card (only in the day's own session).
@@ -385,8 +397,9 @@ function checkpointDue() {
   if (plan.stopped) return null;
   const nextPhase = session.phaseOf.get(session.queue[0].id);
   if (plan.catchUp && !plan.caughtUp && nextPhase && nextPhase !== 'recall') return 'caughtUp';
-  if (session.ordered && !plan.softStop && session.reviewed.size >= SOFT_STOP
-    && session.queue.some(c => session.phaseOf.get(c.id) === 'recall' && !isNew(c.id))) return 'soft';
+  // The kind is the dayPlan flag it sets (review C4-1: 'soft' set plan.soft, so Keep going came back every card).
+  if (plan.ordered && !plan.softStop && (plan.reviewed || []).length >= SOFT_STOP
+    && session.queue.some(c => session.phaseOf.get(c.id) === 'recall' && !isNew(c.id))) return 'softStop';
   return null;
 }
 
@@ -398,16 +411,23 @@ function renderCheckpoint() {
   const body = kind === 'caughtUp'
     ? `<h2>Caught up</h2><p style="margin-top:10px">The reviews from earlier days are done. ${newLeft ? `Today's ${newLeft} new word${newLeft === 1 ? '' : 's'} come next, or you can stop here and meet them another day.` : 'You can carry on, or stop here.'}</p>
        <div class="row"><button class="btn btn-primary" id="cp-go">${newLeft ? `Meet ${newLeft} new` : 'Carry on'}</button><button class="btn" id="cp-stop">Stop for today</button></div>`
-    : `<h2>${session.reviewed.size} reviews done</h2><p style="margin-top:10px">${reviewsLeft} more ${reviewsLeft === 1 ? 'is' : 'are'} waiting. The ones most at risk are behind you, so the rest can wait until tomorrow.</p>
+    : `<h2>${(plan.reviewed || []).length} reviews done</h2><p style="margin-top:10px">${reviewsLeft} more ${reviewsLeft === 1 ? 'is' : 'are'} waiting. The ones most at risk are behind you, so the rest can wait until tomorrow.</p>
        <div class="row"><button class="btn btn-primary" id="cp-go">Keep going</button><button class="btn" id="cp-stop">Stop for today</button></div>`;
   $('#view').innerHTML = `<div class="card done checkpoint">${body}</div>`;
+  // The handlers read the plan afresh: one left open past 4 am belongs to yesterday (review C4-3).
   $('#cp-go').onclick = () => {
-    plan[kind] = true; persist();
-    session.checkpoint = null; nextCard();
+    session.checkpoint = null;
+    if (staleDay()) return;
+    todayPlan()[kind] = true; persist();
+    nextCard();
   };
   $('#cp-stop').onclick = () => {
-    plan[kind] = true; plan.stopped = true; persist();
-    session.checkpoint = null; session.queue = []; session.current = null;
+    session.checkpoint = null;
+    if (staleDay()) return;
+    const p = todayPlan(); p[kind] = true; p.stopped = true; persist();
+    // Cards part-way through their steps (a review just missed) still finish; the rest waits (review C4-4).
+    session.queue = session.queue.filter(c => { const s = cardState(c.id); return s && (s.state === State.Learning || s.state === State.Relearning); });
+    session.current = null;
     renderStudy();
   };
   $('#cp-go').focus();
@@ -445,7 +465,10 @@ function onGrade(rating) {
   const updated = applyGrade(card, rating, session.hints);
   invalidateStages();
   session.done++;
-  if (session.mode === 'today' && wasReview && session.phaseOf && session.phaseOf.get(card.id) === 'recall') session.reviewed.add(card.id);
+  if (session.mode === 'today' && wasReview && session.phaseOf && session.phaseOf.get(card.id) === 'recall') {
+    const p = todayPlan(); p.reviewed = p.reviewed || [];
+    if (!p.reviewed.includes(card.id)) { p.reviewed.push(card.id); persist(); }   // distinct reviews today, for the stop
+  }
   // Cards still in learning come back later in this same session.
   const inSteps = updated.state === State.Learning || updated.state === State.Relearning;
   if (session.phaseOf && session.phaseOf.get(card.id) === 'meet') {
@@ -474,7 +497,7 @@ function onGrade(rating) {
 function queueWriteCard(item) {
   const after = state.settings.writeAfter;
   const plan = todayPlan();
-  if (plan.stopped || (plan.catchUp && !plan.caughtUp)) return; // it would sit among the reviews, before the checkpoint
+  if (plan.stopped || (session.mode === 'today' && plan.catchUp && !plan.caughtUp)) return; // it would sit among the reviews, before the checkpoint
   const wc = DECK_BY_ID[`${item.id}:write`];
   if (!after || !wc || !isNew(wc.id) || session.queue.includes(wc)) return;
   if (inPlaceViews(DECK.filter(c => c.item.id === item.id), cardState) < after) return;
@@ -548,6 +571,9 @@ function renderStudy() {
 
   if (session.checkpoint) { renderCheckpoint(); return; }
   if (!card && !session.queue.length) {
+    // A catch-up day whose session ran dry after its reviews (nothing new left): caught up all the same (C4-6).
+    const dp = todayPlan();
+    if (session.mode === 'today' && dp.catchUp && !dp.caughtUp && session.done > 0) { dp.caughtUp = true; persist(); }
     if (session.done > 0) { renderWrapUp(); return; }
     const nothingNew = newWordAllowance() === 0;
     const stopped = todayPlan().stopped;
@@ -699,7 +725,7 @@ function renderWrapUp() {
   const names = ids => ids.length ? `<ul class="moved">${ids.map(id => { const l = BOOK.lexemes.get(id); return `<li>${heb(lemmaText(l))} ${esc(l.gloss)}</li>`; }).join('')}</ul>` : '';
   const tile = (n, label, ids) => `<div class="stat"><b>${n}</b><span>${label}</span>${names(ids)}</div>`;
   const meetLine = session.counts && session.counts.meet ? `<p class="meet-stars">Meet ${starsHTML(meetStarsNow())}</p>` : '';
-  view.innerHTML = `<div class="card done"><h2>Session done</h2><div class="big">${session.done}</div><p class="muted">cards answered</p>${meetLine}
+  view.innerHTML = `<div class="card done"><h2>${todayPlan().stopped ? 'Stopped for today' : 'Session done'}</h2><div class="big">${session.done}</div><p class="muted">cards answered</p>${meetLine}
     <div class="stats moved-stats">${tile(diff.met.length, diff.met.length === 1 ? 'word met' : 'words met', diff.met)}${tile(diff.graduated.length, 'graduated', diff.graduated)}${tile(diff.solid.length, 'now solid', diff.solid)}</div>
     <div class="pipeline-wrap">${pipelineHTML(countStages(after))}</div>
     <p style="margin-top:14px">${nextLine} Coming back tomorrow matters more than doing more today. Spacing is a big part of what makes this stick.</p>
@@ -937,7 +963,7 @@ function renderProgress() {
   const at = now();
   const seen = DECK.filter(c => !isNew(c.id));
   const learned = seen.filter(c => cardState(c.id).state === State.Review);
-  const due = dueCards(at).length;
+  const due = dueCards(at).filter(c => writeOn(c)).length;
   const today = state.sessions[store.todayKey()] || 0;
   const st = stages();
   const counts = countStages(st);
@@ -1118,6 +1144,7 @@ function debugSeed() {
   });
   clockShift = 0;
   invalidateStages();
+  if (away) state.dayStart = { day: store.todayKey(), stages: [...wordStages()], v: 2 };   // nothing met "today" (C4-7)
   persist();
   try { history.replaceState(null, '', `${location.search}#today`); } catch (e) { /* ignore */ }
 }
