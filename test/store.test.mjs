@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { importState, exportState, DEFAULT_SETTINGS } from '../js/store.js';
 
-test('defaults: 10 new words a day, pointed text, pad shown, intro not yet seen', () => {
-  assert.equal(DEFAULT_SETTINGS.newPerDay, 10);
+test('defaults: 5 new words a day within 15 minutes, pointed text, pad shown, intro not yet seen', () => {
+  assert.equal(DEFAULT_SETTINGS.newPerDay, 5);
+  assert.equal(DEFAULT_SETTINGS.dailyMinutes, 15);
   assert.equal(DEFAULT_SETTINGS.pointing, 'pointed');
   assert.equal(DEFAULT_SETTINGS.showPad, true);
   assert.equal(DEFAULT_SETTINGS.introSeen, false);
@@ -20,7 +21,17 @@ test('import rejects bad setting values', () => {
   assert.equal(s.settings.pointing, 'pointed');
   assert.equal(s.settings.gradeButtons, 3);
   assert.equal(s.settings.hebSize, 'm');
-  assert.equal(s.settings.newPerDay, 10);
+  assert.equal(s.settings.newPerDay, 5);
+});
+test('saved settings move from 10 new words a day to 5 once; a later choice is kept', () => {
+  const old = importState(JSON.stringify({ app: 'hebrew-by-book', settings: { newPerDay: 10 } }));
+  assert.equal(old.settings.newPerDay, 5);
+  assert.equal(old.settings.settingsRev, 2);
+  const chosen = importState(JSON.stringify({ app: 'hebrew-by-book', settings: { newPerDay: 10, settingsRev: 2 } }));
+  assert.equal(chosen.settings.newPerDay, 10);
+  const other = importState(JSON.stringify({ app: 'hebrew-by-book', settings: { newPerDay: 3, dailyMinutes: 7 } }));
+  assert.equal(other.settings.newPerDay, 3);
+  assert.equal(other.settings.dailyMinutes, 15);   // not an option: back to the default
 });
 test('import refuses a file from another app', () => {
   assert.throws(() => importState(JSON.stringify({ app: 'josie-stats' })), /not a Hebrew by Book/);

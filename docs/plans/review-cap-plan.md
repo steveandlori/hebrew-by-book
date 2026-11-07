@@ -85,3 +85,31 @@ Catch-up (15+ overdue) only moves new words behind a checkpoint, and the whole p
 2. Is 18 workable at 10 new words a day, or does it make most days review-only?
 3. Does counting by distinct cards (not grades) hold up with relearning? Does the limit interact badly with
    `dayPlan`, the stop, the day-change checks, or `?debug=away`?
+
+## As built (2026-11-07), after the Fable review (docs/review/plan-review-cap.md: amend; rule f)
+
+The review's simulation found that a cap of 18 reviews made 9–13 of 14 days review-only and left the biggest part of
+the day (new words' steps and practice cards) untouched. It recommended one daily budget instead. Steve chose **15
+minutes a day** and **5 new words a day** ("again I can always add more").
+- **`dailyMinutes`** (10 / 15 / 20 / 30 / no limit; default 15). His pace is measured from the review log: the
+  median gap between grades, ignoring pauses over 2 minutes, with a starting guess of 10 s.
+- **`dayBudget`, decided once at the day's start and kept in `dayPlan` (v 3):**
+  - views = minutes × 60 ÷ pace;
+  - reviews up to views ÷ 1.2, most at risk first, with the rest held for later days;
+  - new words = the room left ÷ 9, up to the setting;
+  - new practice cards = what is left ÷ 3.
+
+  So there is no heavy-day rule and no cliff: new words drop out as reviews fill the day and come back one by one.
+- **Fixes from the review:**
+  - `reviewCap` uses null for no limit (R-1);
+  - step cards are kept out of the capped pool (R-2);
+  - only real reviews count toward the quota (R-3);
+  - the plan is persisted for the day (R-4);
+  - the wrap-up and finished screens say how many wait (R-5);
+  - one concept, with the catch-up checkpoint removed (R-7);
+  - Which word? reviews count on every day (R-10);
+  - its own settings rule (R-12).
+- **Calibration (R-13)** is by his own pace, not the model's 8 s.
+- **New words per day:** the default is 5, and a saved 10 becomes 5 once (`settingsRev: 2`).
+- **Browser check** (390 px): 120 reviews waiting gives "A review day … Today takes the 75 most at risk", Recall 75
+  and no Meet. After 3 reviews and a reload, Recall shows 72. Settings shows the pace and the cards it allows.

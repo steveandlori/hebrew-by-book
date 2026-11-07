@@ -117,31 +117,39 @@ function interleave(...lists) {
 // apart (Which word? cards for words whose Meet is done). Stages here are the old reading (no `recalledLater`).
 // `newWords` = new words to meet today; `extra` = new deepen/tell-apart cards allowed today;
 // `writeAfter` = in-place views that unlock a word's Write the Hebrew card (0: no write cards at all).
-// `riskOf(cardId)` = predicted recall now: when given and more than BACKLOG_ORDER_MIN reviews are due, they come
-// most-likely-forgotten first, shuffled within blocks of BACKLOG_BLOCK so a word's cards are not back to back
-// (`ordered` in the result). `reviewsFirst` (a catch-up day) puts due Which word? cards with the other reviews,
-// before the day's new material, so the catch-up checkpoint comes after every review.
-export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random, riskOf = null, reviewsFirst = false }) {
+// `riskOf(cardId)` = predicted recall now: when given and the due reviews are capped or more than BACKLOG_ORDER_MIN,
+// they come most-likely-forgotten first, shuffled within blocks of BACKLOG_BLOCK so a word's cards are not back to
+// back (`ordered` in the result). `reviewCap` (null: none) keeps that many of them, the most at risk; the rest stay
+// due for later days (the daily budget). `reviewsFirst` puts due Which word? cards with the other reviews, so the
+// budget counts them too. Cards in their short steps are never capped (a step left overnight is worse than late).
+export function composeSession({ deck, getCard, isDue, newWords, extra = newWords, writeAfter = WRITE_READY_VIEWS, rng = Math.random, riskOf = null, reviewsFirst = false, reviewCap = null }) {
   if (!writeAfter) deck = deck.filter(c => c.kind !== 'write');
   const stages = stagesByItem(deck, getCard);
   const isNew = id => !getCard(id);
   const settled = iid => stages.get(iid) === 'graduated' || stages.get(iid) === 'solid';
 
-  const recallDue = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && isDue(c.id));
-  // Cards still in learning steps come due within minutes; they belong to this session even if not due yet.
+  // Cards still in learning steps come due within minutes; they belong to this session whether due or not, and are
+  // kept out of the capped reviews (plan review R-2).
   const inSteps = c => { const s = getCard(c.id); return s && (s.state === State.Learning || s.state === State.Relearning); };
-  const recallSoon = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && !isDue(c.id) && inSteps(c))
+  const recallDue = deck.filter(c => c.kind !== 'which' && !isNew(c.id) && isDue(c.id) && !inSteps(c));
+  const recallSoon = deck.filter(c => !isNew(c.id) && inSteps(c))
     .sort((a, b) => new Date(getCard(a.id).due) - new Date(getCard(b.id).due));
-  const dueWhich = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id));
-  const reviews = reviewsFirst ? [...recallDue, ...dueWhich] : recallDue;
+  const dueWhich = deck.filter(c => c.kind === 'which' && !isNew(c.id) && isDue(c.id) && !inSteps(c));
+  const pool = reviewsFirst ? [...recallDue, ...dueWhich] : recallDue;
   const dueTell = reviewsFirst ? [] : dueWhich;
-  const ordered = !!riskOf && reviews.length > BACKLOG_ORDER_MIN;
-  let reviewOrder;
+  const capped = reviewCap !== null && reviewCap !== undefined && pool.length > reviewCap;
+  const ordered = !!riskOf && (capped || pool.length > BACKLOG_ORDER_MIN);
+  let reviews, reviewOrder;
   if (ordered) {
-    const byRisk = reviews.slice().sort((a, b) => riskOf(a.id) - riskOf(b.id));
+    const byRisk = pool.slice().sort((a, b) => riskOf(a.id) - riskOf(b.id));
+    reviews = capped ? byRisk.slice(0, Math.max(0, reviewCap)) : byRisk;
     reviewOrder = [];
-    for (let i = 0; i < byRisk.length; i += BACKLOG_BLOCK) reviewOrder.push(...shuffleWith(byRisk.slice(i, i + BACKLOG_BLOCK), rng));
-  } else reviewOrder = shuffleWith(reviews, rng);
+    for (let i = 0; i < reviews.length; i += BACKLOG_BLOCK) reviewOrder.push(...shuffleWith(reviews.slice(i, i + BACKLOG_BLOCK), rng));
+  } else {
+    reviewOrder = shuffleWith(pool, rng);
+    if (capped) reviewOrder = reviewOrder.slice(0, Math.max(0, reviewCap));
+    reviews = reviewOrder;
+  }
   const recall = [...reviews, ...recallSoon];
   const tellNew = deck.filter(c => c.kind === 'which' && isNew(c.id) && settled(c.item.id));
   const byItem = new Map();
@@ -177,7 +185,7 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
     ...shuffleWith(meetCtx, rng),
     ...shuffleWith([...deepen, ...tell], rng),
   ];
-  return { queue, phaseOf, ordered, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
+  return { queue, phaseOf, ordered, held: pool.length - reviews.length, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
 }
 
 /* ───────────────────────── breaks and backlogs ───────────────────────── */
@@ -195,17 +203,61 @@ export const SOFT_STOP = 60;
 // planned gap. A prediction only; the next review decides. No research-validated threshold exists (judgement).
 export const FADING_R = 0.80;
 
+/* ── The daily budget (Steve, 2026-11-07: "make the time-in-app achievable and practical as a habit") ──
+   One budget in minutes, turned into card views at his own pace. Reviews come first, most at risk first, up to the
+   budget; new words take only the room left, so after a break they stop and come back a few at a time as the pile
+   falls, with no cliff (docs/plans/review-cap-plan.md and its Fable review, docs/review/plan-review-cap.md, rule f).
+   The view costs are the simulation's: a review is about 1.2 views (misses come back), a new word about 9 (its six
+   Meet views and a share of the practice cards that follow), and a new practice card about 3 (its three steps). */
+export const VIEWS_PER_REVIEW = 1.2;
+export const VIEWS_PER_NEW_WORD = 9;
+export const VIEWS_PER_PRACTICE = 3;
+export const DEFAULT_PACE_SECONDS = 10;
+
+// Today's quotas from the reviews due, the budget in minutes (0: no limit), the pace and the new-words setting.
+export function dayBudget({ due, minutes, secPerView = DEFAULT_PACE_SECONDS, newPerDay }) {
+  if (!minutes) return { views: null, reviews: null, newWords: newPerDay, extra: newPerDay };
+  const views = Math.floor(minutes * 60 / secPerView);
+  const reviews = Math.floor(views / VIEWS_PER_REVIEW);
+  let left = views - Math.min(due, reviews) * VIEWS_PER_REVIEW;
+  const newWords = Math.max(0, Math.min(newPerDay, Math.floor(left / VIEWS_PER_NEW_WORD)));
+  left -= newWords * VIEWS_PER_NEW_WORD;
+  const extra = Math.max(0, Math.min(newPerDay, Math.floor(left / VIEWS_PER_PRACTICE)));
+  return { views, reviews, newWords, extra };
+}
+
+// His pace: the median time between consecutive grades in the review log, counting gaps of 2 s to 2 min (longer is
+// a pause, not a card), from the last 400 grades; DEFAULT_PACE_SECONDS until there are 30 such gaps.
+function paceGaps(log) {
+  const recent = (log || []).slice(-400);
+  const gaps = [];
+  for (let i = 1; i < recent.length; i++) {
+    const g = (new Date(recent[i].at) - new Date(recent[i - 1].at)) / 1000;
+    if (g >= 2 && g <= 120) gaps.push(g);
+  }
+  return gaps;
+}
+// Whether the log holds enough to measure the pace (otherwise paceSeconds is the starting guess).
+export const paceMeasured = log => paceGaps(log).length >= 30;
+export function paceSeconds(log) {
+  const gaps = paceGaps(log);
+  if (gaps.length < 30) return DEFAULT_PACE_SECONDS;
+  gaps.sort((a, b) => a - b);
+  return Math.min(40, Math.max(4, gaps[Math.floor(gaps.length / 2)]));
+}
+
 // Reviews (cards already met, in review or relearning) overdue from before `dayStart`, and due by `dayEnd`.
+// `dueReviews` counts only cards in review (the budget's pool; step cards are never capped).
 export function backlog({ deck, getCard, dayStart, dayEnd }) {
-  let overdue = 0, due = 0;
+  let overdue = 0, due = 0, dueReviews = 0;
   for (const c of deck) {
     const s = getCard(c.id);
     if (!s || s.state === State.New || s.state === State.Learning) continue;
     const d = new Date(s.due);
-    if (d < dayEnd) due++;
+    if (d < dayEnd) { due++; if (s.state === State.Review) dueReviews++; }
     if (d < dayStart) overdue++;
   }
-  return { overdue, due };
+  return { overdue, due, dueReviews };
 }
 
 // Words whose recall card is past its first session and whose predicted recall (`rOf(fsrsCard)`) is below FADING_R.
@@ -223,11 +275,12 @@ export function fadingWords(deck, getCard, rOf, threshold = FADING_R) {
 
 // What is left of today's allowances, given the card ids introduced today: new words (counted by their recall
 // card) and new deepen/tell-apart cards (form, write, which). In-verse cards finishing a meet use no allowance.
-// `moreWords` = new words asked for beyond the daily number (Learn 5 new words); it adds words only.
-export function allowances(introducedToday, newPerDay, moreWords = 0) {
+// `moreWords` = new words asked for beyond the daily number (Meet 5 new); it adds words only. `extraPerDay` = the
+// day's number of new practice cards, when the daily budget sets it apart from the new words.
+export function allowances(introducedToday, newPerDay, moreWords = 0, extraPerDay = newPerDay) {
   const words = introducedToday.filter(id => id.endsWith(':recall')).length;
   const extra = introducedToday.filter(id => /:(form|which|write)(:|$)/.test(id)).length;
-  return { words: Math.max(0, newPerDay + moreWords - words), extra: Math.max(0, newPerDay - extra) };
+  return { words: Math.max(0, newPerDay + moreWords - words), extra: Math.max(0, extraPerDay - extra) };
 }
 
 // Write 10 (Steve, 2026-10-24: "a review, but with concentrated writing"): Write the Hebrew cards for words

@@ -5,7 +5,8 @@ const SCRATCH_KEY = 'hebrew-by-book-debug';
 const APP = 'hebrew-by-book';
 
 const DEFAULT_SETTINGS = {
-  newPerDay: 10,     // new words a day (each is met as two cards); also caps new deepen/tell-apart cards
+  newPerDay: 5,      // new words a day at most (each is met as two cards); the daily budget may give fewer
+  dailyMinutes: 15,  // the daily budget: reviews first, new words in the room left (Steve, 2026-11-07); 0 = no limit
   gradeButtons: 3,   // 2 = Not yet / Got it; 3 adds Partly; 4 adds Easy
   retention: 0.9,
   pointing: 'pointed', // 'pointed' (niqqud) or 'unpointed' (consonants only, as on a scroll)
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS = {
   showPad: true,     // writing pad under recall prompts
   writeForm: 'lemma', // Write-the-Hebrew cards ask for the dictionary form ('lemma') or the form in the verse ('verse')
   writeAfter: 2,       // in-verse views that unlock a word's Write the Hebrew card; 0 = off
+  settingsRev: 2,      // 2: new words a day moved from 10 to 5 once (Steve, 2026-11-07); later choices are kept
 };
 
 function normalizeSettings(raw) {
@@ -24,6 +26,9 @@ function normalizeSettings(raw) {
   if (!['lemma', 'verse'].includes(s.writeForm)) s.writeForm = 'lemma';
   if (![0, 1, 2, 3, 5].includes(s.writeAfter)) s.writeAfter = DEFAULT_SETTINGS.writeAfter;
   if (!(Number(s.newPerDay) > 0)) s.newPerDay = DEFAULT_SETTINGS.newPerDay;
+  if (![0, 10, 15, 20, 30].includes(s.dailyMinutes)) s.dailyMinutes = DEFAULT_SETTINGS.dailyMinutes;
+  // Saved settings from before carry no settingsRev: Steve asked for 5 new words a day instead of 10, once.
+  if (!(raw && raw.settingsRev >= 2)) { if (raw && raw.newPerDay === 10) s.newPerDay = 5; s.settingsRev = 2; }
   return s;
 }
 

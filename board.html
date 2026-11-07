@@ -52,13 +52,13 @@ a { color:var(--pen); }
 /* ==== DATA START ==== */
 const BOARD = {
   meta: {
-    asOf: '2026-10-26',
-    headline: 'New: the app now copes with breaks. Cards are due for their whole day (4 am to 4 am), a day after missed days starts with catch-up reviews and a checkpoint, big piles come most-at-risk first, and words that may have faded are marked.',
+    asOf: '2026-11-07',
+    headline: 'New: a 15-minute daily budget. Reviews first (most at risk first), new words only in the room left (5 a day at most now), so a break no longer leaves a mountain. More is always one tap away after the day.',
     stats: [
       { label: 'Ruth words taught', value: '287' },
       { label: 'names (own tab)', value: '30' },
       { label: 'written/read places', value: '13' },
-      { label: 'tests passing', value: '138' },
+      { label: 'tests passing', value: '143' },
       { label: 'links live', value: '90/90' },
     ],
     links: [
@@ -103,6 +103,7 @@ const BOARD = {
         { t: 'From josie-stats: stars survive a reload; plain-word screen-reader announcements; high-contrast stars', s: 'done' },
         { t: 'Review 2 (adversarial code review + browser QA, then confirmation passes): Write cards never show the answer or sit on written/read places; hints give the sound last; pad fits the ink; QA verdict SHIP', s: 'done' },
         { t: 'After a finished day: “Review 10” (review only), “Write 10” (Write the Hebrew cards only, for words already met) and “Meet 5 new” (its own Meet round and stars; back to the usual number tomorrow)', s: 'done' },
+        { t: 'Daily budget (15 minutes at your own pace): reviews first, new words in the room left; 5 new words a day; after a break, a few days of reviews instead of a mountain (Steve, 2026-11-07)', s: 'done' },
         { t: 'Breaks and backlogs: researched, planned, Fable-reviewed, built (due by day, catch-up checkpoint, most-at-risk order with a stop, “may have faded”)', s: 'done' },
         { t: 'Review 3 (Fable): 7 findings fixed; a word keeps one verse through its first session, then rotates', s: 'done' },
         { t: 'Stages: Learning = met, not yet recalled on a later day; Graduated = recalled on a later day (Learning was always 0)', s: 'done' },
@@ -121,6 +122,8 @@ const BOARD = {
       advice: 'OSHB gives the read form as מַרְגְּלוֹתָיוֹ with a holam on the final vav; review B thinks it is a stray mark from the ketiv pointing. Keep as source (current) or show the conventional form?', done: false },
   ],
   tryThis: [
+    { id: 't13', date: '2026-11-07', title: 'Your 15-minute day',
+      steps: 'Settings → Daily time shows your pace and how many cards 15 minutes allows. On a heavy day, Today says so under the phase strip and takes the reviews most at risk first; the rest come over the next days. After the day, Review 10 / Write 10 / Meet 5 new are extra by choice.' },
     { id: 't12', date: '2026-10-26', title: 'Coming back after a break',
       steps: 'Without waiting a week: add ?debug=away&days=7 to the site address (scratch progress; yours is untouched). Today opens with “Catching up”, the most-at-risk words first, an offer to stop after 60, and then “Caught up … Meet N new / Stop for today”. In Words and Stats, “may have faded” marks words the model thinks have slipped.' },
     { id: 't11', date: '2026-10-25', title: 'Where your words are',
@@ -147,6 +150,7 @@ const BOARD = {
       steps: 'Read → "Written and read: 13 places". Each place hides both parses until you open it. Tell me if any wording takes a side.' },
   ],
   docs: [
+    { title: 'Plan: daily budget (with its Fable review)', href: 'docs/plans/review-cap-plan.md', blurb: 'From “Recall 126” to a 15-minute day: the plan, the review’s simulation (docs/review/plan-review-cap.md), and what was built.', date: '2026-11-07' },
     { title: 'Review 4: code (breaks)', href: 'docs/review/code-4.md', blurb: 'Fable review of the breaks work: 8 findings, one blocker (Keep going re-offered the stop), all fixed and browser-checked with a fake clock.', date: '2026-10-26' },
     { title: 'Research: breaks and backlogs', href: 'docs/research/breaks.md', blurb: 'What happens when you miss days: FSRS read from its code, the evidence on backlogs and relearning, and a simulation of a week and a month away.', date: '2026-10-25' },
     { title: 'Plan: breaks (with its Fable review)', href: 'docs/plans/breaks-plan.md', blurb: 'The plan, the review’s 15 findings (docs/review/plan-breaks.md), and what was built.', date: '2026-10-26' },

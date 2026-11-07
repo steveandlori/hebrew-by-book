@@ -133,6 +133,14 @@ python scripts/serve.py               # http://127.0.0.1:8765/ with caching off
     - **A stop is kept for the day** (`state.dayPlan`), and an open tab rolls over at the next card.
     - Left alone: interrupted steps continue; relearning is one step; no penalty for absence beyond FSRS's.
     - Known: ts-fsrs counts days in UTC, so a learning step crossing 8 pm EDT counts as next-day (minor).
+28. **A daily budget** (Steve, 2026-11-07, after a 2–3 day break showed "Recall 126, Meet 22": "make the time-in-app
+    achievable and practical as a habit"). It replaces decision 27's catch-up checkpoint.
+    - **The budget:** one setting, Daily time, default 15 minutes, measured at his own pace. Reviews come first, most
+      at risk first, up to the budget; the rest wait for later days. New words (default now 5 a day; his 10 became 5
+      once) take only the room left, so after a break there are none until the pile comes down.
+    - **Extra work is his choice:** Review 10, Write 10 and Meet 5 new after the day.
+    - **Records:** plan docs/plans/review-cap-plan.md; Fable review docs/review/plan-review-cap.md (rule f). The
+      covenant is a steady, modest day.
 
 ## Pace: what a day costs (QA's 7-day simulation, answering everything right)
 

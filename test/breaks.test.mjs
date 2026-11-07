@@ -51,7 +51,7 @@ test('backlog: reviews overdue from earlier days, and due today; new and first-s
     'd:recall': fs(State.Learning, at(1, 12)),     // first-session steps: not counted
   };
   const r = backlog({ deck, getCard: id => cards[id] || null, dayStart: dayStartAt(at(9, 12)), dayEnd: dayEnd(at(9, 12)) });
-  assert.deepEqual(r, { overdue: 2, due: 3 });
+  assert.deepEqual(r, { overdue: 2, due: 3, dueReviews: 2 });   // b is relearning: due, but not in the budget's pool
   assert.equal(CATCH_UP_MIN, 15);
 });
 
@@ -96,4 +96,52 @@ test('fading: a word past its first session whose predicted recall is under 0.80
   const got = fadingWords(deck, id => cards[id] || null, c => byCard.get(c));
   assert.deepEqual([...got], ['a']);
   assert.equal(FADING_R, 0.8);
+});
+
+/* ── the daily budget (docs/plans/review-cap-plan.md, rule f of its review) ── */
+import { dayBudget, paceSeconds, paceMeasured, allowances, VIEWS_PER_REVIEW, VIEWS_PER_NEW_WORD, DEFAULT_PACE_SECONDS } from '../js/guide.js';
+
+test('the budget: reviews first, new words in the room left, none when reviews fill it, no cliff', () => {
+  // 15 minutes at 10 s a card = 90 views: up to 75 reviews
+  const day = due => dayBudget({ due, minutes: 15, secPerView: 10, newPerDay: 5 });
+  assert.deepEqual(day(20), { views: 90, reviews: 75, newWords: 5, extra: 5 });   // a light day: all five
+  assert.equal(day(60).newWords, 2);     // 90 − 72 = 18 views: two words
+  assert.equal(day(61).newWords, 1);     // one more review, one fewer word: no cliff
+  assert.equal(day(75).newWords, 0);     // reviews fill the day
+  assert.equal(day(126).reviews, 75);    // a mountain: 75 today, the rest later
+  assert.equal(day(126).newWords, 0);
+  assert.deepEqual(dayBudget({ due: 500, minutes: 0, newPerDay: 5 }), { views: null, reviews: null, newWords: 5, extra: 5 });   // no limit
+  assert.equal(VIEWS_PER_REVIEW, 1.2);
+  assert.equal(VIEWS_PER_NEW_WORD, 9);
+});
+
+test('pace: the median time between grades, ignoring pauses; a starting guess until there is enough', () => {
+  const t0 = Date.parse('2026-11-07T12:00:00Z');
+  const log = n => Array.from({ length: n }, (_, i) => ({ id: 'x', rating: 3, at: new Date(t0 + i * 12000 + (i % 10 === 9 ? 600000 : 0)).toISOString() }));
+  assert.equal(paceSeconds(log(10)), DEFAULT_PACE_SECONDS);
+  assert.equal(paceSeconds(log(200)), 12);   // the 10-minute pauses are not cards
+  assert.equal(paceMeasured(log(10)), false);
+  assert.equal(paceMeasured(log(200)), true);
+});
+
+test('allowances: the budget sets new words and new practice cards apart; Meet 5 new adds on top', () => {
+  assert.deepEqual(allowances([], 2, 0, 4), { words: 2, extra: 4 });
+  assert.deepEqual(allowances([], 0, 5, 0), { words: 5, extra: 0 });   // a review day, then Meet 5 new
+});
+
+test('a capped day keeps the reviews most at risk; step cards are never capped', () => {
+  const deck = Array.from({ length: 30 }, (_, i) => card(`r${i}`)).concat([card('s')]);
+  const cards = Object.fromEntries(deck.map(c => [c.id, fs(State.Review, at(1, 12))]));
+  cards['s:recall'] = fs(State.Relearning, at(9, 12));   // a lapse yesterday, still in its step
+  const risk = id => (id.startsWith('s') ? 0.99 : Number(id.slice(1, id.indexOf(':'))) / 30);
+  const r = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => true, newWords: 0, extra: 0, riskOf: risk, reviewCap: 10, rng: () => 0.5 });
+  const reviews = r.queue.filter(c => c.id !== 's:recall').map(c => c.id).sort();
+  assert.deepEqual(reviews, deck.slice(0, 10).map(c => c.id).sort());   // the ten most at risk
+  assert.ok(r.queue.some(c => c.id === 's:recall'));                   // the step card is kept, outside the cap
+  assert.equal(r.held, 20);
+  assert.equal(r.ordered, true);
+  const none = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => true, newWords: 0, extra: 0, riskOf: risk, reviewCap: null });
+  assert.equal(none.held, 0);
+  const zero = composeSession({ deck, getCard: id => cards[id] || null, isDue: () => true, newWords: 0, extra: 0, riskOf: risk, reviewCap: 0 });
+  assert.equal(zero.queue.filter(c => c.id !== 's:recall').length, 0);   // quota used up: no reviews, not all of them
 });
