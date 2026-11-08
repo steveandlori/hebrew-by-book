@@ -3,7 +3,7 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { todayKey, dayStartAt, dayEnd, DAY_ROLLOVER_HOUR } from '../js/store.js';
-import { backlog, composeSession, fadingWords, BACKLOG_ORDER_MIN, BACKLOG_BLOCK, CATCH_UP_MIN, FADING_R } from '../js/guide.js';
+import { backlog, composeSession, fadingWords, BACKLOG_ORDER_MIN, BACKLOG_BLOCK, FADING_R } from '../js/guide.js';
 import { State } from '../js/scheduler.js';
 
 const at = (d, h, m = 0) => new Date(2026, 10, d, h, m);   // November 2026, local time
@@ -52,7 +52,6 @@ test('backlog: reviews overdue from earlier days, and due today; new and first-s
   };
   const r = backlog({ deck, getCard: id => cards[id] || null, dayStart: dayStartAt(at(9, 12)), dayEnd: dayEnd(at(9, 12)) });
   assert.deepEqual(r, { overdue: 2, due: 3, dueReviews: 2 });   // b is relearning: due, but not in the budget's pool
-  assert.equal(CATCH_UP_MIN, 15);
 });
 
 test('a large pile of due reviews comes most at risk first, in shuffled blocks; a small one is just shuffled', () => {

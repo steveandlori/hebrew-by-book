@@ -588,6 +588,6 @@ body.sheet-open .view { padding-bottom: 72dvh; }
 .debug-bar a { color: inherit; text-decoration: underline; }
 .debug-bar ul { margin: 4px 0 0 18px; }
 
-/* breaks: the catch-up note and the checkpoints */
+/* the daily budget's note under the phase strip, and the stop checkpoint */
 .catchup { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
 .checkpoint .row { justify-content: center; margin-top: 18px; }

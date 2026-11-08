@@ -69,7 +69,7 @@ function shape(s) {
     dayStart: s.dayStart || null,  // {day, stages: [[wordId, stage]]} at the day's first session, for the wrap-up
     moreWords: s.moreWords || null, // {day, n}: new words asked for today beyond the daily number (Meet 5 new)
     laterRecall: s.laterRecall || {}, // wordId -> the first day it was recalled on a day after it was met (Graduated)
-    dayPlan: s.dayPlan || null,    // {day, catchUp, overdue, caughtUp, softStop, stopped}: today's checkpoints (breaks)
+    dayPlan: s.dayPlan || null,    // today's budget and choices {v, day, due, reviewQuota, newQuota, extraQuota, reviewed, stopped, …}
   };
 }
 

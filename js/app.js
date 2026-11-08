@@ -115,10 +115,15 @@ function todayPlan() {
     const at = now();
     const b = backlog({ deck: DECK.filter(c => writeOn(c)), getCard: cardState, dayStart: store.dayStartAt(at), dayEnd: store.dayEnd(at) });
     const pace = paceSeconds(state.log);
-    const q = dayBudget({ due: b.dueReviews, minutes: state.settings.dailyMinutes, secPerView: pace, newPerDay: state.settings.newPerDay });
-    const same = old && old.day === day;   // re-planned mid-day (the budget arrived): keep what was done and chosen
+    // Re-planned mid-day (the budget arrived, or a setting changed): keep what was done and chosen, and price the
+    // day from its reviews at the start, not from what is left of them (review C5-2).
+    const same = old && old.day === day;
+    const reviewedSoFar = same ? (old.reviewed || []).length : 0;
+    const due = same && Number.isFinite(old.due) ? old.due : b.dueReviews + reviewedSoFar;
+    const q = dayBudget({ due, minutes: state.settings.dailyMinutes, secPerView: pace, newPerDay: state.settings.newPerDay });
     state.dayPlan = {
-      v: 3, day, due: b.dueReviews, overdue: b.overdue, pace, views: q.views,
+      v: 3, day, due, overdue: b.overdue, pace, views: q.views,
+      minutes: state.settings.dailyMinutes, newPerDay: state.settings.newPerDay,
       reviewQuota: q.reviews, newQuota: q.newWords, extraQuota: q.extra,
       reviewed: same ? old.reviewed || [] : [], ordered: same ? !!old.ordered : false,
       softStop: same ? !!old.softStop : false, stopped: same ? !!old.stopped : false,
@@ -126,6 +131,12 @@ function todayPlan() {
     persist();
   }
   return state.dayPlan;
+}
+// New words per day or Daily time changed: re-plan today with the new numbers (what was done today is kept), and
+// rebuild the session at the next visit to Today (review C5-1).
+function replanToday() {
+  if (state.dayPlan && state.dayPlan.day === store.todayKey()) { state.dayPlan.v = 0; todayPlan(); }
+  session.day = null;
 }
 // Reviews the budget still allows today (null: no limit).
 const reviewsLeftToday = () => { const p = todayPlan(); return p.reviewQuota === null ? null : Math.max(0, p.reviewQuota - (p.reviewed || []).length); };
@@ -409,7 +420,8 @@ function checkpointDue() {
   const plan = todayPlan();
   if (plan.stopped) return null;
   // The kind is the dayPlan flag it sets (review C4-1: 'soft' set plan.soft, so Keep going came back every card).
-  if (plan.ordered && !plan.softStop && (plan.reviewed || []).length >= SOFT_STOP
+  // Only with no daily limit: the budget already ends the day (review C5-4).
+  if (plan.reviewQuota === null && plan.ordered && !plan.softStop && (plan.reviewed || []).length >= SOFT_STOP
     && session.queue.some(c => session.phaseOf.get(c.id) === 'recall' && !isNew(c.id))) return 'softStop';
   return null;
 }
@@ -417,13 +429,14 @@ function checkpointDue() {
 // On a day the budget limits, one line under the phase strip says so (only while reviewing).
 function budgetNoteHTML(plan) {
   if (plan.reviewQuota === null || plan.stopped) return '';
-  const want = state.settings.newPerDay, mins = state.settings.dailyMinutes;
+  const want = plan.newPerDay, mins = plan.minutes;   // the plan's own numbers (review C5-3)
   const held = Math.max(0, plan.due - plan.reviewQuota);
   if (plan.newQuota >= want && !held) return '';
   const s = n => (n === 1 ? '' : 's');
-  if (held) return `<p class="catchup">A review day: ${plan.due} reviews are waiting, more than fit in your ${mins} minutes. Today takes the ${plan.reviewQuota} most at risk; the rest come over the next days. New words come back as the pile comes down.</p>`;
-  if (!plan.newQuota) return `<p class="catchup">A review day: today’s ${plan.due} review${s(plan.due)} fill your ${mins} minutes, so no new words today. Meet 5 new is on the last screen if you want some.</p>`;
-  return `<p class="catchup">Today’s ${plan.due} review${s(plan.due)} leave room in your ${mins} minutes for ${plan.newQuota} new word${s(plan.newQuota)} (of ${want}).</p>`;
+  const reviews = n => `${n} review${s(n)}`;
+  if (held) return `<p class="catchup">A review day: ${reviews(plan.due)} are waiting, more than fit in your ${mins} minutes. Today takes the ${plan.reviewQuota} most at risk; the rest come over the next days. New words come back as the pile comes down.</p>`;
+  if (!plan.newQuota) return `<p class="catchup">A review day: today’s ${reviews(plan.due)} fill${plan.due === 1 ? 's' : ''} your ${mins} minutes, so no new words today. Meet 5 new is on the last screen if you want some.</p>`;
+  return `<p class="catchup">Your ${mins} minutes leave room today for ${plan.newQuota} new word${s(plan.newQuota)} (of ${want})${plan.due ? `, after ${reviews(plan.due)}` : ''}.</p>`;
 }
 
 function renderCheckpoint() {
@@ -522,7 +535,10 @@ function queueWriteCard(item) {
   if (inPlaceViews(DECK.filter(c => c.item.id === item.id), cardState) < after) return;
   const queuedNew = session.queue.filter(c => c.kind !== 'recall' && c.kind !== 'ctx' && isNew(c.id)).length;
   if (extraAllowance() - queuedNew <= 0) return;
-  session.queue.splice(Math.min(session.queue.length, 3), 0, wc);
+  // During the reviews it waits until they are done, so it does not sit among them (review C5-7).
+  const inRecall = session.phaseOf && session.current && session.phaseOf.get(session.current.id) === 'recall';
+  const afterRecall = inRecall ? session.queue.findIndex(c => session.phaseOf.get(c.id) !== 'recall') : -1;
+  session.queue.splice(inRecall ? (afterRecall < 0 ? session.queue.length : afterRecall) : Math.min(session.queue.length, 3), 0, wc);
   session.total++;
   if (session.phaseOf) { session.phaseOf.set(wc.id, 'deepen'); session.counts.deepen++; }
 }
@@ -599,7 +615,7 @@ function renderStudy() {
       <p style="margin-top:10px">${waitLine || 'Today’s new words wait for another day.'} Meet 5 new is here if you change your mind.</p>
       ${moreButtonsHTML()}</div>`
       : `<div class="card done"><h2>${waiting ? 'Done for today' : 'All caught up'}</h2>
-      <p style="margin-top:10px">${waiting ? `Today’s ${state.settings.dailyMinutes} minutes are used. ${waitLine} Review 10 if you’d like more.` : 'Today’s session is done and nothing is due.'}</p>
+      <p style="margin-top:10px">${waiting ? `Today’s ${todayPlan().minutes} minutes are used. ${waitLine} Review 10 if you’d like more.` : 'Today’s session is done and nothing is due.'}</p>
       ${moreButtonsHTML()}</div>`;
     wireMoreButtons();
     return;
@@ -1025,9 +1041,9 @@ function renderSettings() {
   const srcs = BOOK_DATA.sources.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>. ${esc(x.licence)}. Credit: ${esc(x.credit)}. Pinned at commit <code>${esc(x.commit.slice(0, 7))}</code>.</li>`).join('');
   view.innerHTML = `<h1>Settings</h1>
     <div class="panel">
-      <div class="field"><label for="npd">New words per day</label><span class="help">Each new word arrives as two cards (the word, then the word in its verse). The same number caps new practice cards for words you already know. ${BOOK.vocab.length} words at 10 a day takes about ${Math.ceil(BOOK.vocab.length / 10)} days.</span>
+      <div class="field"><label for="npd">New words per day</label><span class="help">The most new words a day; the daily time below may leave room for fewer on a day with many reviews. Each new word arrives as two cards (the word, then the word in its verse). ${BOOK.vocab.length} words at ${s.newPerDay} a day takes about ${Math.ceil(BOOK.vocab.length / s.newPerDay)} days at least.</span>
         <select id="npd">${[3, 5, 10, 15, 20].map(n => `<option value="${n}" ${s.newPerDay === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      <div class="field"><label for="dm">Daily time</label><span class="help">Each day fits this much: reviews first, the words most at risk first, then new words in the room left (up to the number above). After a break the reviews spread over several days, and new words come back as the pile comes down. Review 10, Write 10 and Meet 5 new after the day’s work are always extra. Your pace: about ${Math.round(paceSeconds(state.log))} seconds a card${paceMeasured(state.log) ? ', from your recent reviews' : ' (a starting guess until you have done some reviews)'}${s.dailyMinutes ? `, so ${s.dailyMinutes} minutes is about ${Math.floor(s.dailyMinutes * 60 / paceSeconds(state.log))} cards` : ''}. A change applies from tomorrow.</span>
+      <div class="field"><label for="dm">Daily time</label><span class="help">Each day fits this much: reviews first, the words most at risk first, then new words in the room left (up to the number above). After a break the reviews spread over several days, and new words come back as the pile comes down. Review 10, Write 10 and Meet 5 new after the day’s work are always extra. Your pace: about ${Math.round(paceSeconds(state.log))} seconds a card${paceMeasured(state.log) ? ', from your recent reviews' : ' (a starting guess until you have done some reviews)'}${s.dailyMinutes ? `, so ${s.dailyMinutes} minutes is about ${Math.floor(s.dailyMinutes * 60 / paceSeconds(state.log))} cards` : ''}. A change applies straight away; what you have done today counts.</span>
         <select id="dm">${[[10, '10 minutes'], [15, '15 minutes'], [20, '20 minutes'], [30, '30 minutes'], [0, 'No limit']].map(([n, l]) => `<option value="${n}" ${s.dailyMinutes === n ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>Hebrew text</label><span class="help">Pointed shows the vowel points. Unpointed shows consonants only, as a scroll would; in places where the written and read text differ it leads with the written consonants.</span>
         <div class="seg" role="group"><button data-pt="pointed" aria-pressed="${s.pointing === 'pointed'}">Pointed</button><button data-pt="unpointed" aria-pressed="${s.pointing === 'unpointed'}">Unpointed</button></div></div>
@@ -1050,8 +1066,8 @@ function renderSettings() {
       <p class="small muted">Glosses are TBESH's short glosses, shortened to their general sense (the part before TBESH's colon). TBESH's longer definitions are not used. Cantillation marks are not shown.</p></div>`;
 
   const save = () => { scheduler = makeScheduler(state.settings); persist(); toast('Saved'); };
-  $('#npd').onchange = e => { s.newPerDay = Number(e.target.value); save(); };
-  $('#dm').onchange = e => { s.dailyMinutes = Number(e.target.value); save(); };
+  $('#npd').onchange = e => { s.newPerDay = Number(e.target.value); replanToday(); save(); };
+  $('#dm').onchange = e => { s.dailyMinutes = Number(e.target.value); replanToday(); save(); renderSettings(); };   // the help shows the new card count
   view.querySelectorAll('[data-pt]').forEach(b => b.onclick = () => { s.pointing = b.dataset.pt; save(); renderSettings(); });
   view.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { s.hebSize = b.dataset.hs; applyHebSize(); save(); renderSettings(); });
   view.querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { s.gradeButtons = Number(b.dataset.gb); save(); renderSettings(); });

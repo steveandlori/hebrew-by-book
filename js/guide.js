@@ -185,6 +185,7 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
     ...shuffleWith(meetCtx, rng),
     ...shuffleWith([...deepen, ...tell], rng),
   ];
+  // held: due reviews left for later days by the cap (for tests and any future display).
   return { queue, phaseOf, ordered, held: pool.length - reviews.length, counts: { recall: recall.length, meet: meet.length, deepen: deepen.length, tell: tell.length } };
 }
 
@@ -194,9 +195,6 @@ export function composeSession({ deck, getCard, isDue, newWords, extra = newWord
 // A large pile of due reviews is taken most-at-risk first (Anki's advice for a backlog); below this it is shuffled.
 export const BACKLOG_ORDER_MIN = 60;
 export const BACKLOG_BLOCK = 20;
-// The day starts as a catch-up day when at least this many reviews are overdue from earlier days (a missed day at
-// 10 words a day leaves about 40; an interrupted session leaves mostly unseen new cards, which are never overdue).
-export const CATCH_UP_MIN = 15;
 // After this many distinct reviews in an ordered session, the app offers to stop for the day.
 export const SOFT_STOP = 60;
 // A word is shown as possibly faded when its recall card's predicted recall is below this: about three times its
